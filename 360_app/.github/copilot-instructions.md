@@ -1,0 +1,7 @@
+- [x] Estructura de proyecto Flutter web creada
+- [x] Pantalla de prueba de conexión Supabase implementada
+- [x] README.md actualizado
+- [ ] Instalar dependencias con `flutter pub get`
+- [ ] Ejecutar en local con `flutter run -d chrome`
+- [ ] Compilar para producción con `flutter build web`
+- [ ] Subir `/build/web` a Netlify
