@@ -4,16 +4,30 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 
 class ServiceInfoWidget extends StatelessWidget {
+  String formatHoursAndMinutes(dynamic value) {
+    double hours = 0.0;
+    if (value is num) {
+      hours = value.toDouble();
+    } else if (value is String && double.tryParse(value) != null) {
+      hours = double.parse(value);
+    }
+    final h = hours.truncate();
+    final m = ((hours - h) * 60).round();
+    if (h > 0 && m > 0) return '${h}h ${m}m';
+    if (h > 0) return '${h}h';
+    return '${m}m';
+  }
+
   final Map<String, dynamic> orderData;
   final bool isEditing;
   final void Function(String field, dynamic value) onChanged;
 
   const ServiceInfoWidget({
-    Key? key,
+    super.key,
     required this.orderData,
     required this.isEditing,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   String _getServiceIcon(String serviceType) {
     switch (serviceType.toLowerCase()) {
@@ -48,11 +62,23 @@ class ServiceInfoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final serviceType = orderData['serviceType'] as String? ?? '';
-    final rate = orderData['rate'] is String
-        ? double.tryParse(orderData['rate']) ?? 0.0
-        : (orderData['rate'] as double? ?? 0.0);
-    final timeSpent = orderData['timeSpent'] as double? ?? 0.0;
-    final totalAmount = orderData['totalAmount'] as double? ?? 0.0;
+    const validTypes = ['leather', 'wood', 'upholstery', 'cleaning'];
+    final dropdownValue =
+        validTypes.contains(serviceType) ? serviceType : validTypes.first;
+    final rateRaw = orderData['rate'];
+    final rate = rateRaw is String
+        ? double.tryParse(rateRaw) ?? 0.0
+        : rateRaw is int
+            ? rateRaw.toDouble()
+            : (rateRaw as double? ?? 0.0);
+    final timeSpentRaw = orderData['timeSpent'];
+    final timeSpentFormatted = formatHoursAndMinutes(timeSpentRaw);
+    final totalAmountRaw = orderData['totalAmount'];
+    final totalAmount = totalAmountRaw is String
+        ? double.tryParse(totalAmountRaw) ?? 0.0
+        : totalAmountRaw is int
+            ? totalAmountRaw.toDouble()
+            : (totalAmountRaw as double? ?? 0.0);
 
     return Container(
       width: double.infinity,
@@ -100,14 +126,9 @@ class ServiceInfoWidget extends StatelessWidget {
                     ),
                     isEditing
                         ? DropdownButton<String>(
-                            value: serviceType.isNotEmpty ? serviceType : null,
+                            value: dropdownValue,
                             isExpanded: true,
-                            items: [
-                              'leather',
-                              'wood',
-                              'upholstery',
-                              'cleaning',
-                            ]
+                            items: validTypes
                                 .map((type) => DropdownMenuItem(
                                       value: type,
                                       child: Text(_getServiceName(type)),
@@ -153,8 +174,8 @@ class ServiceInfoWidget extends StatelessWidget {
               ),
               SizedBox(width: 4.w),
               Expanded(
-                child: _buildInfoItem('Tiempo Trabajado',
-                    '${timeSpent.toStringAsFixed(1)}h', 'schedule'),
+                child: _buildInfoItem(
+                    'Tiempo Trabajado', timeSpentFormatted.trim(), 'schedule'),
               ),
             ],
           ),

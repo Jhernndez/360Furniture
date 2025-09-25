@@ -1,9 +1,9 @@
+import '../../services/service_request_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../services/supabase_service.dart';
 import './widgets/action_buttons_widget.dart';
 import './widgets/customer_details_widget.dart';
 import './widgets/observations_widget.dart';
@@ -14,90 +14,199 @@ import './widgets/status_management_widget.dart';
 import './widgets/time_tracking_widget.dart';
 
 class OrderDetailScreen extends StatefulWidget {
-  const OrderDetailScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? order;
+  const OrderDetailScreen({super.key, this.order});
 
   @override
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  String _snakeToCamel(String s) {
-    return s.replaceAllMapped(RegExp(r'_([a-z])'), (m) => m[1]!.toUpperCase());
+  void _onChanged(String field, dynamic value) {
+    bool shouldUpdateTotal = false;
+    setState(() {
+      _orderData[field] = value;
+      _orderData['lastModified'] = DateTime.now().toIso8601String();
+      if (field == 'rate' || field == 'timeSpent') {
+        shouldUpdateTotal = true;
+      }
+    });
+    if (shouldUpdateTotal) {
+      final rate = (_orderData['rate'] is num)
+          ? (_orderData['rate'] as num).toDouble()
+          : double.tryParse(_orderData['rate'].toString()) ?? 0.0;
+      final time = (_orderData['timeSpent'] is num)
+          ? (_orderData['timeSpent'] as num).toDouble()
+          : double.tryParse(_orderData['timeSpent'].toString()) ?? 0.0;
+      setState(() {
+        _orderData['totalAmount'] = rate * time;
+      });
+      _updateTotalAmountInSupabase(_orderData['id'], _orderData['totalAmount']);
+    }
   }
 
-  Map<String, dynamic> _mapOrderData(Map<String, dynamic> data) {
-    final mapped = <String, dynamic>{};
-    data.forEach((key, value) {
-      mapped[_snakeToCamel(key)] = value;
-    });
-    // Alias para compatibilidad con widgets
-    mapped['orderNumber'] =
-        mapped['orderNumber'] ?? mapped['order_number'] ?? '';
-    mapped['serviceType'] =
-        mapped['serviceType'] ?? mapped['service_type'] ?? '';
-    mapped['customerName'] =
-        mapped['customerName'] ?? mapped['customer_name'] ?? '';
-    mapped['customerPhone'] =
-        mapped['customerPhone'] ?? mapped['customer_phone'] ?? '';
-    mapped['customerAddress'] =
-        mapped['customerAddress'] ?? mapped['customer_address'] ?? '';
-    mapped['createdDate'] = mapped['createdDate'] ?? mapped['created_at'] ?? '';
-    mapped['rate'] = mapped['rate'] ?? mapped['hourlyRate'] ?? 0.0;
-    mapped['timeSpent'] = mapped['timeSpent'] ?? 0.0;
-    mapped['totalAmount'] =
-        mapped['totalAmount'] ?? mapped['amount'] ?? mapped['totalCost'] ?? 0.0;
-    mapped['observations'] = mapped['observations'] ?? '';
-    return mapped;
+  Future<void> _updateTotalAmountInSupabase(
+      dynamic orderId, double totalAmount) async {
+    try {
+      await ServiceRequestService.instance
+          .updateServiceRequest(orderId, {'amount': totalAmount});
+    } catch (e) {
+      // Manejo de error opcional
+    }
   }
 
   bool _isEditing = false;
-  Map<String, dynamic>? _orderData;
-  bool _isLoading = true;
+  bool _hasBeenEdited = false;
+  late Map<String, dynamic> _orderData;
   final ScrollController _scrollController = ScrollController();
-  String? _orderId;
-  bool _didFetch = false;
 
-  @override
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_didFetch) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map?;
-      _orderId = args?['orderId']?.toString();
-      if (_orderId != null && _orderId!.isNotEmpty) {
-        _fetchOrderData();
-        _didFetch = true;
+  // Datos de ejemplo para pruebas locales (puedes eliminar si no se usa)
+  final Map<String, dynamic> _mockOrderData = {
+    "orderNumber": "ORD-2024-001",
+    "createdDate": "18/09/2024",
+    "status": "in_progress",
+    "serviceType": "leather",
+    "rate": 25.50,
+    "timeSpent": 3.5,
+    "totalAmount": 89.25,
+    "customerName": "María González",
+    "customerPhone": "+34 612 345 678",
+    "customerAddress": "Calle Mayor 123, 28001 Madrid, España",
+    "observations":
+        "El sofá de cuero presenta desgaste en los brazos y necesita tratamiento especial para restaurar el color original. Se requiere limpieza profunda y aplicación de acondicionador. El cliente solicita que se tenga especial cuidado con las costuras laterales que están algo sueltas.",
+    "startTime": "09:30",
+    "endTime": "13:00",
+    "photos": [
+      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400",
+      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
+    ],
+    "technicianId": "TECH-001",
+    "technicianName": "Carlos Rodríguez",
+    "lastModified": "2024-09-18T21:35:49.912118",
+    "modificationHistory": [
+      {
+        "timestamp": "2024-09-18T09:30:00",
+        "action": "Orden creada",
+        "user": "Carlos Rodríguez"
+      },
+      {
+        "timestamp": "2024-09-18T10:15:00",
+        "action": "Estado cambiado a En Progreso",
+        "user": "Carlos Rodríguez"
       }
-    }
-  }
+    ]
+  };
 
-  Future<void> _fetchOrderData() async {
-    setState(() {
-      _isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      String? orderId;
+      Map<String, dynamic>? orderArg;
+      if (args is Map) {
+        if (args['order'] != null && args['order'] is Map<String, dynamic>) {
+          orderArg = args['order'];
+        } else if (args['orderId'] != null) {
+          orderId = args['orderId'].toString();
+        }
+        if (args['mode'] == 'edit') {
+          setState(() {
+            _isEditing = true;
+          });
+        }
+      }
+      if (orderArg != null) {
+        setState(() {
+          _orderData = Map.from(orderArg!);
+        });
+      } else if (orderId != null) {
+        // Cargar datos reales desde Supabase
+        final service = ServiceRequestService.instance;
+        final data = await service.getServiceRequestById(orderId);
+        if (data != null) {
+          // Mapeo de campos reales a los usados en la UI
+          setState(() {
+            // Map real status to widget-expected values
+            String rawStatus = data['status']?.toString() ?? '';
+            String mappedStatus;
+            switch (rawStatus.toLowerCase()) {
+              case 'complete':
+              case 'completed':
+                mappedStatus = 'Complete';
+                break;
+              case 'partial':
+                mappedStatus = 'Partial';
+                break;
+              case 'report':
+                mappedStatus = 'Report';
+                break;
+              case 'cancelled':
+              case 'canceled':
+                mappedStatus = 'cancelled';
+                break;
+              default:
+                mappedStatus = 'Complete'; // fallback to a valid status
+            }
+            _orderData = {
+              "orderNumber": data['order_number']?.toString() ??
+                  data['id']?.toString() ??
+                  '',
+              "id": data['id']?.toString() ?? '',
+              "createdDate":
+                  data['created_at']?.toString().substring(0, 10) ?? '',
+              "status": mappedStatus,
+              // Normaliza el tipo de servicio a minúsculas para el Dropdown y la UI
+              "serviceType":
+                  data['service_type']?.toString().toLowerCase() ?? '',
+              // Corrige los campos para que coincidan con la base de datos
+              "rate": data['rate'] ?? 0.0,
+              // Convierte duration (minutos) a horas decimales
+              "timeSpent": (data['duration'] is int && data['duration'] > 12)
+                  ? (data['duration'] / 60.0)
+                  : (data['duration'] is String &&
+                          int.tryParse(data['duration']) != null &&
+                          int.parse(data['duration']) > 12)
+                      ? (int.parse(data['duration']) / 60.0)
+                      : (data['duration'] is num
+                          ? data['duration'].toDouble()
+                          : double.tryParse(
+                                  data['duration']?.toString() ?? '') ??
+                              0.0),
+              "totalAmount": data['amount'] ?? 0.0,
+              "customerName": data['customer_name']?.toString() ?? '',
+              "customerPhone": data['customer_phone']?.toString() ?? '',
+              "customerAddress": data['customer_address']?.toString() ?? '',
+              "observations": (data['observations'] ??
+                      data['notes'] ??
+                      data['description'] ??
+                      '')
+                  .toString(),
+              "startTime":
+                  data['scheduled_date']?.toString().substring(11, 16) ?? '',
+              "endTime":
+                  data['completed_date']?.toString().substring(11, 16) ?? '',
+              "photos":
+                  (data['photos'] is List) ? (data['photos'] as List) : [],
+              "technicianId": data['technician_id']?.toString() ?? '',
+              "technicianName": data['technician_name']?.toString() ?? '',
+              "lastModified": data['updated_at']?.toString() ?? '',
+              "modificationHistory": (data['modification_history'] is List)
+                  ? (data['modification_history'] as List)
+                  : [],
+            };
+          });
+        } else {
+          setState(() {
+            _orderData = Map.from(_mockOrderData);
+          });
+        }
+      } else {
+        setState(() {
+          _orderData = Map.from(_mockOrderData);
+        });
+      }
     });
-    try {
-      final response = await SupabaseService.instance.client
-          .from('service_requests')
-          .select()
-          .eq('order_number', _orderId ?? '')
-          .single();
-      setState(() {
-        _orderData = _mapOrderData(response);
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      Fluttertoast.showToast(
-        msg: 'Error al cargar la orden',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 14.sp,
-      );
-    }
   }
 
   @override
@@ -106,40 +215,62 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     super.dispose();
   }
 
-  void _handleStatusChanged(String newStatus) {
-    if (_orderData == null) return;
+  Future<void> _handleStatusChanged(String newStatus) async {
     setState(() {
-      _orderData!['status'] = newStatus;
-      _orderData!['lastModified'] = DateTime.now().toIso8601String();
+      _orderData['status'] = newStatus;
+      _orderData['lastModified'] = DateTime.now().toIso8601String();
     });
+
     // Add to modification history
-    final history = (_orderData!['modificationHistory'] as List?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
+    final history = (_orderData['modificationHistory'] as List)
+        .cast<Map<String, dynamic>>();
     history.add({
       "timestamp": DateTime.now().toIso8601String(),
       "action": "Estado cambiado a ${_getStatusText(newStatus)}",
-      "user": _orderData!['technicianName'] ?? '',
+      "user": _orderData['technicianName']
     });
-    _showSuccessMessage('Estado actualizado correctamente');
+
+    // Actualizar solo el estado en Supabase
+    final service = ServiceRequestService.instance;
+    final id = _orderData['id'] ??
+        _orderData['orderId'] ??
+        _orderData['order_number'] ??
+        _orderData['orderNumber'];
+    if (id != null && id.toString().isNotEmpty) {
+      try {
+        await service
+            .updateServiceRequest(id.toString(), {'status': newStatus});
+        _showSuccessMessage('Estado actualizado correctamente');
+      } catch (e) {
+        _showSuccessMessage('Error al actualizar estado en Supabase');
+      }
+    } else {
+      _showSuccessMessage(
+          'No se pudo identificar la orden para actualizar estado');
+    }
   }
 
   void _handleTimeChanged(double newTime) {
-    if (_orderData == null) return;
+    // newTime viene en horas decimales desde el widget
     setState(() {
-      _orderData!['timeSpent'] = newTime;
-      _orderData!['totalAmount'] = newTime * (_orderData!['rate'] as double);
-      _orderData!['lastModified'] = DateTime.now().toIso8601String();
+      _orderData['timeSpent'] = newTime;
+      final rate = (_orderData['rate'] is num)
+          ? (_orderData['rate'] as num).toDouble()
+          : double.tryParse(_orderData['rate'].toString()) ?? 0.0;
+      _orderData['totalAmount'] = rate * newTime;
+      _orderData['lastModified'] = DateTime.now().toIso8601String();
     });
+    // Actualiza el total en Supabase
+    _updateTotalAmountInSupabase(_orderData['id'], _orderData['totalAmount']);
     _showSuccessMessage('Tiempo actualizado correctamente');
   }
 
   void _handlePhotosChanged(List<String> newPhotos) {
-    if (_orderData == null) return;
     setState(() {
-      _orderData!['photos'] = newPhotos;
-      _orderData!['lastModified'] = DateTime.now().toIso8601String();
+      _orderData['photos'] = newPhotos;
+      _orderData['lastModified'] = DateTime.now().toIso8601String();
     });
+
     _showSuccessMessage('Fotos actualizadas correctamente');
   }
 
@@ -179,29 +310,94 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   String _getStatusText(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
+    final normalized = status.toLowerCase().trim();
+    switch (normalized) {
+      case 'complete':
         return 'Completado';
-      case 'in_progress':
-        return 'En Progreso';
-      case 'pending':
-        return 'Pendiente';
+      case 'partial':
+        return 'Parcial';
+      case 'report':
+        return 'Reporte';
       case 'cancelled':
         return 'Cancelado';
       default:
+        // Devuelve el status original capitalizado si no es reconocido
+        if (status.isNotEmpty) {
+          return status[0].toUpperCase() + status.substring(1);
+        }
         return 'Desconocido';
     }
   }
 
   void _toggleEditMode() {
+    if (_hasBeenEdited) return;
     setState(() {
-      _isEditing = !_isEditing;
+      if (!_isEditing) {
+        _isEditing = true;
+        _showSuccessMessage('Modo edición activado');
+      } else {
+        _isEditing = false;
+        _hasBeenEdited = true;
+        // Guardar cambios en Supabase
+        _saveOrderToSupabase();
+      }
     });
+  }
 
-    if (_isEditing) {
-      _showSuccessMessage('Modo edición activado');
-    } else {
-      _showSuccessMessage('Cambios guardados');
+  Future<void> _saveOrderToSupabase() async {
+    final service = ServiceRequestService.instance;
+    // Usar siempre el id real de la orden (UUID), no el order_number visible
+    final id = _orderData['id'] ??
+        _orderData['orderId'] ??
+        _orderData['order_number'] ??
+        _orderData['orderNumber'];
+    if (id == null || id.toString().isEmpty) {
+      _showSuccessMessage('No se pudo identificar la orden para guardar');
+      return;
+    }
+
+    // Validar y normalizar serviceType
+    const validServiceTypes = ['Leather', 'Wood', 'Upholstery', 'Cleaning'];
+    String serviceType = _orderData['serviceType']?.toString().trim() ?? '';
+    // Permitir minúsculas pero guardar con mayúscula inicial
+    final normalized = validServiceTypes.firstWhere(
+      (t) => t.toLowerCase() == serviceType.toLowerCase(),
+      orElse: () => '',
+    );
+    if (normalized.isEmpty) {
+      _showSuccessMessage(
+          'Error: Tipo de servicio inválido. Debe ser uno de: Leather, Wood, Upholstery, Cleaning');
+      return;
+    }
+
+    final updates = <String, dynamic>{
+      'customer_name': _orderData['customerName'],
+      'customer_phone': _orderData['customerPhone'],
+      'customer_address': _orderData['customerAddress'],
+      'status': _orderData['status'],
+      'service_type': normalized,
+      'rate': _orderData['rate'],
+      // Guardar duration en minutos (entero, partiendo de horas decimales)
+      'duration': ((_orderData['timeSpent'] ?? 0) is num)
+          ? ((_orderData['timeSpent'] as num) * 60).round()
+          : (double.tryParse(_orderData['timeSpent'].toString()) != null
+              ? (double.parse(_orderData['timeSpent'].toString()) * 60).round()
+              : 0),
+      'amount': _orderData['totalAmount'],
+      'observations': _orderData['observations'],
+      // Agrega aquí otros campos editables si es necesario
+    };
+    try {
+      final resp = await service.updateServiceRequest(id.toString(), updates);
+      if (resp == null) {
+        _showSuccessMessage('Error: respuesta nula de Supabase');
+      } else if (resp['observations'] != updates['observations']) {
+        _showSuccessMessage('Advertencia: Supabase no actualizó observations');
+      } else {
+        _showSuccessMessage('Cambios guardados en Supabase');
+      }
+    } catch (e) {
+      _showSuccessMessage('Error al guardar en Supabase: $e');
     }
   }
 
@@ -220,23 +416,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             size: 24,
           ),
         ),
-        title: _isLoading
-            ? const Text('Cargando...')
-            : Text(
-                _orderData?['orderNumber'] != null
-                    ? 'Orden ${_orderData!['orderNumber']}'
-                    : 'Detalle de Orden',
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimaryLight,
-                ),
-              ),
+        title: Text(
+          'Detalle de Orden',
+          style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimaryLight,
+          ),
+        ),
         actions: [
           IconButton(
-            onPressed: _toggleEditMode,
+            onPressed: (_isEditing || !_hasBeenEdited) ? _toggleEditMode : null,
             icon: CustomIconWidget(
               iconName: _isEditing ? 'save' : 'edit',
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: (_isEditing || !_hasBeenEdited)
+                  ? AppTheme.lightTheme.colorScheme.primary
+                  : AppTheme.textDisabledLight,
               size: 24,
             ),
           ),
@@ -244,174 +438,129 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ],
       ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _orderData == null
-                ? Center(
-                    child: Text('No se encontró la orden.'),
-                  )
-                : SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: EdgeInsets.all(4.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Order Header
-                        OrderHeaderWidget(orderData: _orderData!),
-                        SizedBox(height: 3.h),
-
-                        // Service Information
-                        ServiceInfoWidget(
-                          orderData: _orderData!,
-                          isEditing: _isEditing,
-                          onChanged: (field, value) {
-                            setState(() {
-                              _orderData![field] = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Customer Details
-                        CustomerDetailsWidget(
-                          orderData: _orderData!,
-                          isEditing: _isEditing,
-                          onChanged: (field, value) {
-                            setState(() {
-                              _orderData![field] = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Observations
-                        ObservationsWidget(
-                          data: _orderData!,
-                          isEditing: _isEditing,
-                          onChanged: (field, value) {
-                            setState(() {
-                              _orderData![field] = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Time Tracking
-                        TimeTrackingWidget(
-                          orderData: _orderData!,
-                          onTimeChanged: _handleTimeChanged,
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Status Management
-                        StatusManagementWidget(
-                          orderData: _orderData!,
-                          onStatusChanged: _handleStatusChanged,
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Photo Attachment
-                        PhotoAttachmentWidget(
-                          existingPhotos: (_orderData!["photos"] as List?)
-                                  ?.cast<String>() ??
-                              [],
-                          onPhotosChanged: _handlePhotosChanged,
-                        ),
-                        SizedBox(height: 3.h),
-
-                        // Action Buttons
-                        ActionButtonsWidget(
-                          orderData: _orderData!,
-                          onUpdateStatus: _handleUpdateStatus,
-                          onAddPhotos: _handleAddPhotos,
-                          onGenerateReport: _handleGenerateReport,
-                        ),
-                        SizedBox(height: 4.h),
-
-                        // Modification History
-                        if (_isEditing) ...[
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(4.w),
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightTheme.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.shadowLight,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Historial de Modificaciones',
-                                  style: AppTheme
-                                      .lightTheme.textTheme.titleMedium
-                                      ?.copyWith(
-                                    color: AppTheme.textPrimaryLight,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 2.h),
-                                ...((_orderData!["modificationHistory"]
-                                                as List?)
-                                            ?.cast<Map<String, dynamic>>() ??
-                                        [])
-                                    .map((modification) => Padding(
-                                          padding: EdgeInsets.only(bottom: 1.h),
-                                          child: Row(
-                                            children: [
-                                              CustomIconWidget(
-                                                iconName: 'history',
-                                                color:
-                                                    AppTheme.textSecondaryLight,
-                                                size: 16,
-                                              ),
-                                              SizedBox(width: 2.w),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      modification['action']
-                                                              as String? ??
-                                                          '',
-                                                      style: AppTheme.lightTheme
-                                                          .textTheme.bodySmall
-                                                          ?.copyWith(
-                                                        color: AppTheme
-                                                            .textPrimaryLight,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      '${modification['user'] ?? ''} - ${modification['timestamp'] != null ? DateTime.parse(modification['timestamp']).toString().substring(0, 16) : ''}',
-                                                      style: AppTheme.lightTheme
-                                                          .textTheme.bodySmall
-                                                          ?.copyWith(
-                                                        color: AppTheme
-                                                            .textSecondaryLight,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ))
-                                    .toList(),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                        ],
-                      ],
-                    ),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: EdgeInsets.all(4.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OrderHeaderWidget(orderData: _orderData),
+              SizedBox(height: 3.h),
+              ServiceInfoWidget(
+                orderData: _orderData,
+                isEditing: _isEditing,
+                onChanged: _onChanged,
+              ),
+              SizedBox(height: 3.h),
+              CustomerDetailsWidget(
+                orderData: _orderData,
+                isEditing: _isEditing,
+                onChanged: _onChanged,
+              ),
+              SizedBox(height: 3.h),
+              ObservationsWidget(
+                data: _orderData,
+                isEditing: _isEditing,
+                onChanged: _onChanged,
+              ),
+              SizedBox(height: 3.h),
+              TimeTrackingWidget(
+                orderData: _orderData,
+                onTimeChanged: _handleTimeChanged,
+              ),
+              SizedBox(height: 3.h),
+              StatusManagementWidget(
+                orderData: _orderData,
+                onStatusChanged: _handleStatusChanged,
+              ),
+              SizedBox(height: 3.h),
+              PhotoAttachmentWidget(
+                existingPhotos: (_orderData['photos'] as List).cast<String>(),
+                onPhotosChanged: _handlePhotosChanged,
+              ),
+              SizedBox(height: 3.h),
+              ActionButtonsWidget(
+                orderData: _orderData,
+                onUpdateStatus: _handleUpdateStatus,
+                onAddPhotos: _handleAddPhotos,
+                onGenerateReport: _handleGenerateReport,
+              ),
+              SizedBox(height: 4.h),
+              if (_isEditing) ...[
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(4.w),
+                  decoration: BoxDecoration(
+                    color: AppTheme.lightTheme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.shadowLight,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Historial de Modificaciones',
+                        style:
+                            AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                          color: AppTheme.textPrimaryLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      ...(_orderData['modificationHistory'] as List)
+                          .cast<Map<String, dynamic>>()
+                          .map((modification) => Padding(
+                                padding: EdgeInsets.only(bottom: 1.h),
+                                child: Row(
+                                  children: [
+                                    CustomIconWidget(
+                                      iconName: 'history',
+                                      color: AppTheme.textSecondaryLight,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 2.w),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            modification['action'] as String,
+                                            style: AppTheme
+                                                .lightTheme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: AppTheme.textPrimaryLight,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${modification['user']} - ${DateTime.parse(modification['timestamp']).toString().substring(0, 16)}',
+                                            style: AppTheme
+                                                .lightTheme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color:
+                                                  AppTheme.textSecondaryLight,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 4.h),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

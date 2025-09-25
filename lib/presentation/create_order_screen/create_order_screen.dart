@@ -90,8 +90,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
     final isValid = _orderNumberController.text.trim().isNotEmpty &&
         _selectedServiceType.isNotEmpty &&
         _customerData['name']?.isNotEmpty == true &&
-        _customerData['phone']?.isNotEmpty == true &&
-        _customerData['address']?.isNotEmpty == true &&
         _selectedStatus.isNotEmpty;
     print('[DEBUG] _isFormValid: $isValid');
     print(
@@ -453,10 +451,57 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
                         ),
                         SizedBox(height: 4.h),
 
-                        // Customer Information
-                        CustomerInformationForm(
-                          customerData: _customerData,
-                          onCustomerDataChanged: _onCustomerDataChanged,
+                        // Customer Selector Dropdown
+                        FutureBuilder<List<Map<String, dynamic>>>(
+                          future: CustomerService.instance.getAllCustomers(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Center(child: CircularProgressIndicator());
+                            }
+                            if (snapshot.hasError) {
+                              return Text('Error loading customers');
+                            }
+                            final customers = snapshot.data ?? [];
+                            // Mostrar el Dropdown aunque la lista esté vacía
+                            return DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Cliente',
+                                border: OutlineInputBorder(),
+                              ),
+                              value: _customerId,
+                              items: customers.map((customer) {
+                                final id = customer['id']?.toString() ?? '';
+                                final name = customer['name'] ?? '';
+                                return DropdownMenuItem<String>(
+                                  value: id,
+                                  child: Text(name),
+                                );
+                              }).toList(),
+                              onChanged: (selectedId) {
+                                final selected = customers.firstWhere(
+                                  (c) => c['id']?.toString() == selectedId,
+                                  orElse: () => {},
+                                );
+                                setState(() {
+                                  _customerId = selectedId;
+                                  _customerData = {
+                                    'name': selected['name'] ?? '',
+                                    'phone': selected['phone'] ?? '',
+                                    'address': selected['address'] ?? '',
+                                  };
+                                });
+                                _markAsChanged();
+                              },
+                              validator: (val) => val == null || val.isEmpty
+                                  ? 'Required'
+                                  : null,
+                              // Si no hay clientes, mostrar hint
+                              hint: customers.isEmpty
+                                  ? Text('No hay clientes registrados')
+                                  : null,
+                            );
+                          },
                         ),
                         SizedBox(height: 4.h),
 

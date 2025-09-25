@@ -9,10 +9,10 @@ class StatusManagementWidget extends StatefulWidget {
   final Function(String) onStatusChanged;
 
   const StatusManagementWidget({
-    Key? key,
+    super.key,
     required this.orderData,
     required this.onStatusChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<StatusManagementWidget> createState() => _StatusManagementWidgetState();
@@ -34,22 +34,24 @@ class _StatusManagementWidgetState extends State<StatusManagementWidget> {
     final statuses = await ServiceRequestService.instance.getStatusOptions();
     // Mapeo visual (puedes personalizar los labels e iconos aquí)
     final labelMap = {
-      'pending': 'Pendiente',
-      'in_progress': 'En Progreso',
-      'completed': 'Completado',
+      'Complete': 'Completado',
+      'Partial': 'Parcial',
+      'Report': 'Reporte',
       'cancelled': 'Cancelado',
     };
     final iconMap = {
-      'pending': 'schedule',
-      'in_progress': 'work',
-      'completed': 'check_circle',
+      'Complete': 'check_circle',
+      'Partial': 'hourglass_bottom',
+      'Report': 'description',
       'cancelled': 'cancel',
     };
     final colorMap = {
-      'pending': AppTheme.secondaryLight,
-      'in_progress': AppTheme.warningLight,
-      'completed': AppTheme.successLight,
-      'cancelled': AppTheme.errorLight,
+      'Complete': AppTheme.successLight,
+      'Partial': AppTheme.warningLight,
+      'Report': AppTheme.errorLight,
+      'report': AppTheme.errorLight,
+      'Cancelled': AppTheme.secondaryLight,
+      'cancelled': AppTheme.secondaryLight,
     };
     setState(() {
       _statusOptions = statuses
@@ -155,82 +157,78 @@ class _StatusManagementWidgetState extends State<StatusManagementWidget> {
           SizedBox(height: 3.h),
           _loading
               ? Center(child: CircularProgressIndicator())
-              : SizedBox(
-                  height: 160,
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 3.w,
-                      mainAxisSpacing: 2.h,
-                      childAspectRatio: 2.5,
-                    ),
-                    itemCount: _statusOptions.length,
-                    itemBuilder: (context, index) {
-                      final option = _statusOptions[index];
-                      final isSelected = _selectedStatus == option['value'];
-                      return InkWell(
-                        onTap: () {
-                          if (!isSelected) {
-                            _showStatusChangeConfirmation(
-                                option['value'] as String);
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: EdgeInsets.all(3.w),
-                          decoration: BoxDecoration(
+              : GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 3.w,
+                    mainAxisSpacing: 2.h,
+                    childAspectRatio: 2.5,
+                  ),
+                  itemCount: _statusOptions.length,
+                  itemBuilder: (context, index) {
+                    final option = _statusOptions[index];
+                    final isSelected = _selectedStatus == option['value'];
+                    return InkWell(
+                      onTap: () {
+                        if (!isSelected) {
+                          _showStatusChangeConfirmation(
+                              option['value'] as String);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: EdgeInsets.all(3.w),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (option['color'] as Color)
+                                  .withValues(alpha: 0.1)
+                              : AppTheme.lightTheme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
                             color: isSelected
-                                ? (option['color'] as Color)
-                                    .withValues(alpha: 0.1)
-                                : AppTheme.lightTheme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected
-                                  ? option['color'] as Color
-                                  : AppTheme.borderSubtleLight,
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CustomIconWidget(
-                                iconName: option['icon'] as String,
-                                color: isSelected
-                                    ? option['color'] as Color
-                                    : AppTheme.textSecondaryLight,
-                                size: 20,
-                              ),
-                              SizedBox(width: 2.w),
-                              Expanded(
-                                child: Text(
-                                  option['label'] as String,
-                                  style: AppTheme
-                                      .lightTheme.textTheme.labelMedium
-                                      ?.copyWith(
-                                    color: isSelected
-                                        ? option['color'] as Color
-                                        : AppTheme.textSecondaryLight,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (isSelected)
-                                CustomIconWidget(
-                                  iconName: 'check',
-                                  color: option['color'] as Color,
-                                  size: 16,
-                                ),
-                            ],
+                                ? option['color'] as Color
+                                : AppTheme.borderSubtleLight,
+                            width: isSelected ? 2 : 1,
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        child: Row(
+                          children: [
+                            CustomIconWidget(
+                              iconName: option['icon'] as String,
+                              color: isSelected
+                                  ? option['color'] as Color
+                                  : AppTheme.textSecondaryLight,
+                              size: 20,
+                            ),
+                            SizedBox(width: 2.w),
+                            Expanded(
+                              child: Text(
+                                option['label'] as String,
+                                style: AppTheme.lightTheme.textTheme.labelMedium
+                                    ?.copyWith(
+                                  color: isSelected
+                                      ? option['color'] as Color
+                                      : AppTheme.textSecondaryLight,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isSelected)
+                              CustomIconWidget(
+                                iconName: 'check',
+                                color: option['color'] as Color,
+                                size: 16,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
         ],
       ),

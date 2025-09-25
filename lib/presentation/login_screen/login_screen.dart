@@ -9,7 +9,7 @@ import './widgets/language_toggle_widget.dart';
 import './widgets/login_form_widget.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -29,25 +29,15 @@ class _LoginScreenState extends State<LoginScreen> {
           onTap: () => FocusScope.of(context).unfocus(),
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
-                    MediaQuery.of(context).padding.top -
-                    MediaQuery.of(context).padding.bottom,
-              ),
-              child: IntrinsicHeight(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w),
-                  child: Column(
-                    children: [
-                      _buildHeader(),
-                      Expanded(
-                        child: _buildBody(),
-                      ),
-                      _buildFooter(),
-                    ],
-                  ),
-                ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6.w),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildBody(),
+                  SizedBox(height: 2.h),
+                  _buildFooter(),
+                ],
               ),
             ),
           ),
@@ -307,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
         String route = '/order-dashboard'; // default route
         if (role == 'admin') {
           route = '/admin-dashboard';
-        } else if (role == 'supervisor' || role == 'technician') {
+        } else if (role == 'technician') {
           route = '/order-dashboard';
         }
 

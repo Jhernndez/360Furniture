@@ -59,9 +59,9 @@ class _ResultsSectionWidgetState extends State<ResultsSectionWidget>
                 Text(
                   'Reconciliation Results',
                   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimaryLight,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryLight,
+                      ),
                 ),
               ],
             ),
@@ -143,10 +143,10 @@ class _ResultsSectionWidgetState extends State<ResultsSectionWidget>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Successful matches tab
-                  _buildMatchesList(successfulMatches),
+                  // Successful matches tab (mostrar tabla de diferencias)
+                  _buildDifferencesTable(successfulMatches),
 
-                  // Issues tab
+                  // Issues tab (puede quedar vacía o con mensaje)
                   _buildIssuesList(unresolvedItems),
 
                   // Recommended actions tab
@@ -197,121 +197,116 @@ class _ResultsSectionWidgetState extends State<ResultsSectionWidget>
         Text(
           '$count',
           style: Theme.of(context).textTheme.titleLarge!.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            color: AppTheme.textSecondaryLight,
-          ),
+                color: AppTheme.textSecondaryLight,
+              ),
         ),
       ],
     );
   }
 
   Widget _buildMatchesList(List<Map<String, dynamic>> matches) {
-    if (matches.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 48, color: AppTheme.textSecondaryLight),
-            const SizedBox(height: 16),
-            Text(
-              'No successful matches found',
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                color: AppTheme.textSecondaryLight,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    // No se usa más, la tabla se muestra en _buildDifferencesTable
+    return const SizedBox.shrink();
+  }
 
-    return ListView.builder(
-      itemCount: matches.length,
-      itemBuilder: (context, index) {
-        final match = matches[index];
-        return ListTile(
-          leading: Icon(Icons.check_circle, color: Colors.green),
-          title: Text(match['orderId']),
-          subtitle: Text(match['details']),
-          trailing: Icon(Icons.verified, color: Colors.green, size: 20),
-        );
-      },
+  Widget _buildDifferencesTable(List<Map<String, dynamic>> matches) {
+    // Mostrar la tabla SIEMPRE, aunque matches esté vacío
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Orden')),
+          DataColumn(label: Text('Amount Técnico')),
+          DataColumn(label: Text('Amount Excel')),
+          DataColumn(label: Text('Amount Supabase')),
+          DataColumn(label: Text('Diferencia')),
+          DataColumn(label: Text('Diferencia Final')),
+        ],
+        rows: matches.isNotEmpty
+            ? matches.map((issue) {
+                final orderId = issue['orderId']?.toString() ?? '-';
+                final amountTecnico = issue['amountTecnico'] ?? 0;
+                final amountExcel = issue['amountExcel'] ?? 0;
+                final amountSupabase = issue['amountSupabase'] ?? 0;
+                final diferencia =
+                    (amountTecnico - amountExcel).toStringAsFixed(2);
+                final diferenciaFinal =
+                    (amountExcel - amountSupabase).toStringAsFixed(2);
+                return DataRow(cells: [
+                  DataCell(Text(orderId)),
+                  DataCell(Text(amountTecnico.toString())),
+                  DataCell(Text(amountExcel.toString())),
+                  DataCell(Text(amountSupabase.toString())),
+                  DataCell(Text(diferencia)),
+                  DataCell(Text(diferenciaFinal)),
+                ]);
+              }).toList()
+            : [
+                const DataRow(cells: [
+                  DataCell(Text('No hay datos para mostrar',
+                      style: TextStyle(color: Colors.grey))),
+                  DataCell(Text('')),
+                  DataCell(Text('')),
+                  DataCell(Text('')),
+                  DataCell(Text('')),
+                  DataCell(Text('')),
+                ])
+              ],
+      ),
     );
   }
 
   Widget _buildIssuesList(List<Map<String, dynamic>> issues) {
-    if (issues.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle, size: 48, color: Colors.green),
-            const SizedBox(height: 16),
-            Text(
-              'No unresolved issues',
-              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                color: Colors.green,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Select all checkbox
-        CheckboxListTile(
-          title: Text('Select All'),
-          value: selectAll,
-          onChanged: (value) {
-            setState(() {
-              selectAll = value ?? false;
-              if (selectAll) {
-                selectedItems =
-                    Set.from(List.generate(issues.length, (i) => i));
-              } else {
-                selectedItems.clear();
-              }
-            });
-          },
-        ),
-        Divider(),
-
-        // Issues list
-        Expanded(
-          child: ListView.builder(
-            itemCount: issues.length,
-            itemBuilder: (context, index) {
-              final issue = issues[index];
-              bool isSelected = selectedItems.contains(index);
-
-              return CheckboxListTile(
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      selectedItems.add(index);
-                    } else {
-                      selectedItems.remove(index);
-                    }
-                    selectAll = selectedItems.length == issues.length;
-                  });
-                },
-                title: Text(issue['orderId']),
-                subtitle: Text(issue['details']),
-                secondary: Icon(Icons.error_outline, color: Colors.orange),
-              );
-            },
-          ),
-        ),
-      ],
+    // Mostrar la tabla SIEMPRE, aunque issues esté vacío
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('Orden')),
+          DataColumn(label: Text('Amount Técnico')),
+          DataColumn(label: Text('Amount Excel')),
+          DataColumn(label: Text('Amount Supabase')),
+          DataColumn(label: Text('Diferencia')),
+          DataColumn(label: Text('Diferencia Final')),
+        ],
+        rows: issues.isNotEmpty
+            ? issues.map((issue) {
+                final orderId = issue['orderId']?.toString() ?? '-';
+                final amountTecnico = issue['amountTecnico'] ?? 0;
+                final amountExcel = issue['amountExcel'] ?? 0;
+                final amountSupabase = issue['amountSupabase'] ?? 0;
+                final diferencia =
+                    (amountTecnico - amountExcel).toStringAsFixed(2);
+                final diferenciaFinal =
+                    (amountExcel - amountSupabase).toStringAsFixed(2);
+                return DataRow(cells: [
+                  DataCell(Text(orderId)),
+                  DataCell(Text(amountTecnico.toString())),
+                  DataCell(Text(amountExcel.toString())),
+                  DataCell(Text(amountSupabase.toString())),
+                  DataCell(Text(diferencia)),
+                  DataCell(Text(diferenciaFinal)),
+                ]);
+              }).toList()
+            : [
+                const DataRow(cells: [
+                  DataCell(Text('-')),
+                  DataCell(Text('-')),
+                  DataCell(Text('-')),
+                  DataCell(Text('-')),
+                  DataCell(Text('-')),
+                  DataCell(Text('-')),
+                ])
+              ],
+      ),
     );
   }
 
@@ -323,9 +318,9 @@ class _ResultsSectionWidgetState extends State<ResultsSectionWidget>
           Text(
             'Recommended Actions',
             style: Theme.of(context).textTheme.titleMedium!.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryLight,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryLight,
+                ),
           ),
           const SizedBox(height: 16),
           _buildActionItem(
@@ -380,16 +375,16 @@ class _ResultsSectionWidgetState extends State<ResultsSectionWidget>
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimaryLight,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryLight,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                    color: AppTheme.textSecondaryLight,
-                  ),
+                        color: AppTheme.textSecondaryLight,
+                      ),
                 ),
               ],
             ),

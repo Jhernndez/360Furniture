@@ -11,25 +11,27 @@ import './widgets/order_card_widget.dart';
 import './widgets/search_bar_widget.dart';
 
 class OrderListScreen extends StatefulWidget {
-  const OrderListScreen({Key? key}) : super(key: key);
+  const OrderListScreen({super.key});
 
   @override
   State<OrderListScreen> createState() => _OrderListScreenState();
 }
 
 class _OrderListScreenState extends State<OrderListScreen> {
+  // Track which orders have been edited in this session
+  final Set<String> _editedOrderIds = {};
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
   List<Map<String, dynamic>> _allOrders = [];
   List<Map<String, dynamic>> _filteredOrders = [];
   Map<String, dynamic> _activeFilters = {};
-  List<String> _recentSearches = [];
+  final List<String> _recentSearches = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String _searchQuery = '';
   String _sortBy = 'Date';
-  bool _isOffline = false;
+  final bool _isOffline = false;
 
   @override
   void initState() {
@@ -163,7 +165,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
             (a, b) => (a['status'] as String).compareTo(b['status'] as String));
         break;
       case 'Customer Name':
-        final getName = (Map<String, dynamic> o) =>
+        String getName(Map<String, dynamic> o) =>
             (o['customer_name'] ?? o['customerName'] ?? '') as String;
         orders.sort((a, b) => getName(a).compareTo(getName(b)));
         break;
@@ -231,8 +233,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                         _applyFilters();
                         Navigator.pop(context);
                       },
-                    ))
-                .toList(),
+                    )),
             SizedBox(height: 2.h),
           ],
         ),
@@ -263,11 +264,25 @@ class _OrderListScreenState extends State<OrderListScreen> {
     Navigator.pushNamed(
       context,
       '/order-detail-screen',
-      arguments: {'orderId': order['id']},
+      arguments: {'order': order},
     );
   }
 
   void _editOrder(Map<String, dynamic> order) {
+    final id = order['id']?.toString() ??
+        order['orderId']?.toString() ??
+        order['order_number']?.toString() ??
+        order['orderNumber']?.toString();
+    if (id != null && _editedOrderIds.contains(id)) {
+      Fluttertoast.showToast(
+        msg: "Esta orden fue cerrada y no se puede editar nuevamente.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
+      return;
+    }
+    // Aquí iría la lógica real de edición/navegación
+    _editedOrderIds.add(id ?? '');
     Fluttertoast.showToast(
       msg: "Edit order #${order['order_number']}",
       toastLength: Toast.LENGTH_SHORT,
@@ -450,37 +465,41 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     ),
                   )
                 : _filteredOrders.isEmpty
-                    ? EmptyStateWidget(
-                        title:
-                            _searchQuery.isNotEmpty || _activeFilters.isNotEmpty
+                    ? SafeArea(
+                        child: SingleChildScrollView(
+                          child: EmptyStateWidget(
+                            title: _searchQuery.isNotEmpty ||
+                                    _activeFilters.isNotEmpty
                                 ? 'No orders found'
                                 : 'No orders yet',
-                        subtitle: _searchQuery.isNotEmpty ||
-                                _activeFilters.isNotEmpty
-                            ? 'Try adjusting your search or filters'
-                            : 'Create your first service order to get started',
-                        buttonText:
-                            _searchQuery.isNotEmpty || _activeFilters.isNotEmpty
+                            subtitle: _searchQuery.isNotEmpty ||
+                                    _activeFilters.isNotEmpty
+                                ? 'Try adjusting your search or filters'
+                                : 'Create your first service order to get started',
+                            buttonText: _searchQuery.isNotEmpty ||
+                                    _activeFilters.isNotEmpty
                                 ? 'Clear Filters'
                                 : 'Create Order',
-                        onButtonPressed: () {
-                          if (_searchQuery.isNotEmpty ||
-                              _activeFilters.isNotEmpty) {
-                            setState(() {
-                              _searchQuery = '';
-                              _searchController.clear();
-                              _activeFilters.clear();
-                            });
-                            _applyFilters();
-                          } else {
-                            Navigator.pushNamed(
-                                context, '/create-order-screen');
-                          }
-                        },
-                        iconName:
-                            _searchQuery.isNotEmpty || _activeFilters.isNotEmpty
+                            onButtonPressed: () {
+                              if (_searchQuery.isNotEmpty ||
+                                  _activeFilters.isNotEmpty) {
+                                setState(() {
+                                  _searchQuery = '';
+                                  _searchController.clear();
+                                  _activeFilters.clear();
+                                });
+                                _applyFilters();
+                              } else {
+                                Navigator.pushNamed(
+                                    context, '/create-order-screen');
+                              }
+                            },
+                            iconName: _searchQuery.isNotEmpty ||
+                                    _activeFilters.isNotEmpty
                                 ? 'search_off'
                                 : 'add_business',
+                          ),
+                        ),
                       )
                     : RefreshIndicator(
                         onRefresh: _refreshOrders,
@@ -504,10 +523,18 @@ class _OrderListScreenState extends State<OrderListScreen> {
                             }
 
                             final order = _filteredOrders[index];
+                            final id = order['id']?.toString() ??
+                                order['orderId']?.toString() ??
+                                order['order_number']?.toString() ??
+                                order['orderNumber']?.toString();
+                            final alreadyEdited =
+                                id != null && _editedOrderIds.contains(id);
                             return OrderCardWidget(
                               order: order,
                               onTap: () => _navigateToOrderDetail(order),
-                              onEdit: () => _editOrder(order),
+                              onEdit: alreadyEdited
+                                  ? null
+                                  : () => _editOrder(order),
                               onDuplicate: () => _duplicateOrder(order),
                               onShare: () => _shareOrder(order),
                               onStatusChange: () => _changeOrderStatus(order),

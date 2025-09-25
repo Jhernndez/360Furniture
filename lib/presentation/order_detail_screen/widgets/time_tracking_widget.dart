@@ -9,16 +9,32 @@ class TimeTrackingWidget extends StatefulWidget {
   final Function(double) onTimeChanged;
 
   const TimeTrackingWidget({
-    Key? key,
+    super.key,
     required this.orderData,
     required this.onTimeChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<TimeTrackingWidget> createState() => _TimeTrackingWidgetState();
 }
 
 class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
+  String formatMinutesToHourMin(dynamic value) {
+    int totalMinutes = 0;
+    if (value is int) {
+      totalMinutes = value;
+    } else if (value is String && int.tryParse(value) != null) {
+      totalMinutes = int.parse(value);
+    } else if (value is double) {
+      totalMinutes = value.round();
+    }
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    if (h > 0 && m > 0) return '${h}h ${m}m';
+    if (h > 0) return '${h}h';
+    return '${m}m';
+  }
+
   late TextEditingController _hoursController;
   late TextEditingController _minutesController;
   bool _isEditing = false;
@@ -26,10 +42,17 @@ class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
   @override
   void initState() {
     super.initState();
-    final timeSpent = widget.orderData['timeSpent'] as double? ?? 0.0;
-    final hours = timeSpent.floor();
-    final minutes = ((timeSpent - hours) * 60).round();
-
+    final timeSpentRaw = widget.orderData['timeSpent'];
+    int totalMinutes = 0;
+    if (timeSpentRaw is int) {
+      totalMinutes = timeSpentRaw;
+    } else if (timeSpentRaw is String && int.tryParse(timeSpentRaw) != null) {
+      totalMinutes = int.parse(timeSpentRaw);
+    } else if (timeSpentRaw is double) {
+      totalMinutes = timeSpentRaw.round();
+    }
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
     _hoursController = TextEditingController(text: hours.toString());
     _minutesController = TextEditingController(text: minutes.toString());
   }
@@ -50,14 +73,22 @@ class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
       _isEditing = false;
     });
 
+    // Guardar en horas decimales en el modelo, la lógica de minutos se hace en el screen
     widget.onTimeChanged(totalHours);
   }
 
   void _cancelTimeChanges() {
-    final timeSpent = widget.orderData['timeSpent'] as double? ?? 0.0;
-    final hours = timeSpent.floor();
-    final minutes = ((timeSpent - hours) * 60).round();
-
+    final timeSpentRaw = widget.orderData['timeSpent'];
+    int totalMinutes = 0;
+    if (timeSpentRaw is int) {
+      totalMinutes = timeSpentRaw;
+    } else if (timeSpentRaw is String && int.tryParse(timeSpentRaw) != null) {
+      totalMinutes = int.parse(timeSpentRaw);
+    } else if (timeSpentRaw is double) {
+      totalMinutes = timeSpentRaw.round();
+    }
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
     _hoursController.text = hours.toString();
     _minutesController.text = minutes.toString();
 
@@ -67,7 +98,7 @@ class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
   }
 
   String _formatDuration(double hours) {
-    final h = hours.floor();
+    final h = hours.truncate();
     final m = ((hours - h) * 60).round();
 
     if (h == 0) {
@@ -81,7 +112,10 @@ class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final timeSpent = widget.orderData['timeSpent'] as double? ?? 0.0;
+    final timeSpentRaw = widget.orderData['timeSpent'];
+    final timeSpentStr = _formatDuration(timeSpentRaw is num
+        ? timeSpentRaw.toDouble()
+        : double.tryParse(timeSpentRaw.toString()) ?? 0.0);
     final startTime = widget.orderData['startTime'] as String? ?? '';
     final endTime = widget.orderData['endTime'] as String? ?? '';
 
@@ -192,7 +226,16 @@ class _TimeTrackingWidgetState extends State<TimeTrackingWidget> {
                           SizedBox(height: 0.5.h),
                           _isEditing
                               ? _buildTimeEditor()
-                              : _buildTimeDisplay(timeSpent),
+                              : Text(
+                                  timeSpentStr,
+                                  style: AppTheme
+                                      .lightTheme.textTheme.titleLarge
+                                      ?.copyWith(
+                                    color:
+                                        AppTheme.lightTheme.colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ],
                       ),
                     ),

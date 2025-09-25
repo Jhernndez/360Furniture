@@ -7,7 +7,6 @@ import '../widgets/custom_error_widget.dart';
 import './services/supabase_service.dart';
 
 import 'package:flutter/foundation.dart';
-import 'presentation/supabase_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,16 +22,16 @@ void main() async {
     debugPrint('Failed to initialize Supabase: $e');
   }
 
-  bool _hasShownError = false;
+  bool hasShownError = false;
 
   // 🚨 CRITICAL: Custom error handling - DO NOT REMOVE
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    if (!_hasShownError) {
-      _hasShownError = true;
+    if (!hasShownError) {
+      hasShownError = true;
 
       // Reset flag after 3 seconds to allow error widget on new screens
       Future.delayed(Duration(seconds: 5), () {
-        _hasShownError = false;
+        hasShownError = false;
       });
 
       return CustomErrorWidget(
@@ -51,11 +50,13 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Sizer(builder: (context, orientation, screenType) {
       return MaterialApp(
-        title: 'servicetracker_pro',
+        title: '360 Furniture',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,

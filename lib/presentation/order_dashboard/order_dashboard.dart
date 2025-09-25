@@ -12,7 +12,7 @@ import './widgets/week_toggle.dart';
 import './widgets/weekly_summary_card.dart';
 
 class OrderDashboard extends StatefulWidget {
-  const OrderDashboard({Key? key}) : super(key: key);
+  const OrderDashboard({super.key});
 
   @override
   State<OrderDashboard> createState() => _OrderDashboardState();
@@ -66,8 +66,16 @@ class _OrderDashboardState extends State<OrderDashboard>
     try {
       final orders =
           await ServiceRequestService.instance.getAllServiceRequests();
+      final mappedOrders = orders.map<Map<String, dynamic>>((order) {
+        return {
+          'orderNumber': order['order_number'] ?? order['id']?.toString() ?? '',
+          'createdDate': order['created_at']?.toString().substring(0, 10) ?? '',
+          'status': order['status'] ?? '',
+          ...order,
+        };
+      }).toList();
       setState(() {
-        _orders = orders;
+        _orders = mappedOrders;
         _isLoading = false;
       });
     } catch (e) {
@@ -272,8 +280,7 @@ class _OrderDashboardState extends State<OrderDashboard>
     }).catchError((e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Error al completar la orden: ' + (e?.toString() ?? '')),
+          content: Text('Error al completar la orden: ${e?.toString() ?? ''}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -341,10 +348,14 @@ class _OrderDashboardState extends State<OrderDashboard>
   }
 
   void _viewOrderDetails(Map<String, dynamic> order) {
+    // Log para depuración: ver qué datos se envían al detalle
+    // ignore: avoid_print
+    print('Enviando order al detalle:');
+    print(order);
     Navigator.pushNamed(
       context,
       '/order-detail-screen',
-      arguments: {'orderId': order['order_number'], 'mode': 'view'},
+      arguments: {'order': order},
     );
   }
 }

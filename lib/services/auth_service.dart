@@ -21,12 +21,11 @@ class AuthService {
     if (!isAuthenticated) return null;
 
     try {
-      final response =
-          await client
-              .from('user_profiles')
-              .select()
-              .eq('id', currentUser!.id)
-              .single();
+      final response = await client
+          .from('user_profiles')
+          .select()
+          .eq('id', currentUser!.id)
+          .single();
       return response;
     } catch (e) {
       print('Error fetching user profile: $e');
@@ -190,10 +189,5 @@ class AuthService {
   // Check if user is technician
   Future<bool> isTechnician() async {
     return await hasRole('technician');
-  }
-
-  // Check if user is supervisor
-  Future<bool> isSupervisor() async {
-    return await hasRole('supervisor');
   }
 }

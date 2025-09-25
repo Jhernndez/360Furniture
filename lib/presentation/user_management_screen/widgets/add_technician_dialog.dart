@@ -7,8 +7,7 @@ import '../../../services/user_service.dart';
 class AddTechnicianDialog extends StatefulWidget {
   final VoidCallback? onTechnicianAdded;
 
-  const AddTechnicianDialog({Key? key, this.onTechnicianAdded})
-      : super(key: key);
+  const AddTechnicianDialog({super.key, this.onTechnicianAdded});
 
   @override
   State<AddTechnicianDialog> createState() => _AddTechnicianDialogState();

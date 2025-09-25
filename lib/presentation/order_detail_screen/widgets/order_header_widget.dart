@@ -8,19 +8,23 @@ class OrderHeaderWidget extends StatelessWidget {
   final Map<String, dynamic> orderData;
 
   const OrderHeaderWidget({
-    Key? key,
+    super.key,
     required this.orderData,
-  }) : super(key: key);
+  });
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'completed':
-        return AppTheme.lightTheme.colorScheme.tertiary;
-      case 'in_progress':
+      case 'complete':
+      case 'completado':
+        return AppTheme.successLight;
+      case 'partial':
+      case 'parcial':
         return AppTheme.warningLight;
-      case 'pending':
-        return AppTheme.secondaryLight;
+      case 'report':
+      case 'reporte':
+        return AppTheme.errorLight;
       case 'cancelled':
+      case 'cancelado':
         return AppTheme.errorLight;
       default:
         return AppTheme.secondaryLight;
@@ -30,11 +34,12 @@ class OrderHeaderWidget extends StatelessWidget {
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'completed':
+      case 'complete':
         return 'Completado';
-      case 'in_progress':
-        return 'En Progreso';
-      case 'pending':
-        return 'Pendiente';
+      case 'partial':
+        return 'Parcial';
+      case 'report':
+        return 'Reporte';
       case 'cancelled':
         return 'Cancelado';
       default:

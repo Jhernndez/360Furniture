@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io' if (dart.library.io) 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:universal_html/html.dart' as html;
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 
 class ReportService {
   static final SupabaseClient _supabase = Supabase.instance.client;
@@ -49,27 +49,70 @@ class ReportService {
       Map<String, dynamic> reportData = {};
 
       switch (reportType.toLowerCase()) {
+        case 'summary orders':
+          {
+            // ...existing code...
+            var query = _supabase.from('service_requests').select(
+                'order_number, duration, status, updated_at, customer_name, service_type, observations, user_profiles!technician_id(full_name)');
+            if (filters['status'] != null) {
+              query = query.eq('status', filters['status']);
+            }
+            final serviceRequests = await query;
+            reportData = {
+              'title': 'SUMMARY ORDERS',
+              'serviceRequests': serviceRequests,
+              'summary': _calculateSummary(serviceRequests),
+              'generatedAt': DateTime.now().toIso8601String(),
+            };
+            break;
+          }
+        case 'summary payments':
+          {
+            // Fetch order_number, technician_name, customer_name, amount
+            var query = _supabase.from('service_requests').select(
+                'order_number, amount, customer_name, user_profiles!technician_id(full_name)');
+            if (filters['status'] != null) {
+              query = query.eq('status', filters['status']);
+            }
+            final serviceRequests = await query;
+            reportData = {
+              'title': 'SUMMARY PAYMENTS',
+              'serviceRequests': serviceRequests,
+              'generatedAt': DateTime.now().toIso8601String(),
+            };
+            break;
+          }
         case 'weekly':
         case 'monthly':
-          // Get service requests data
-          final serviceRequests = await _supabase
-              .from('service_requests')
-              .select('''
-                *,
-                customers(*),
-                users(*)
-              ''')
-              .gte('created_at', _getDateRange(reportType)['start']!)
-              .lte('created_at', _getDateRange(reportType)['end']!);
-
-          reportData = {
-            'title': '${reportType.toUpperCase()} Performance Report',
-            'period': _getDateRange(reportType),
-            'serviceRequests': serviceRequests,
-            'summary': _calculateSummary(serviceRequests),
-            'generatedAt': DateTime.now().toIso8601String(),
-          };
-          break;
+          {
+            // Use user-selected date range if provided
+            String? start;
+            String? end;
+            if (filters['start'] != null && filters['end'] != null) {
+              start = filters['start'];
+              end = filters['end'];
+            } else {
+              start = _getDateRange(reportType)['start'];
+              end = _getDateRange(reportType)['end'];
+            }
+            var query = _supabase
+                .from('service_requests')
+                .select('*, customers(*)')
+                .gte('updated_at', start!)
+                .lte('updated_at', end!);
+            if (filters['status'] != null) {
+              query = query.eq('status', filters['status']);
+            }
+            final serviceRequests = await query;
+            reportData = {
+              'title': '${reportType.toUpperCase()} Performance Report',
+              'period': {'start': start, 'end': end},
+              'serviceRequests': serviceRequests,
+              'summary': _calculateSummary(serviceRequests),
+              'generatedAt': DateTime.now().toIso8601String(),
+            };
+            break;
+          }
 
         case 'technician':
           // Get technician performance data
@@ -108,7 +151,7 @@ class ReportService {
         case 'revenue':
           final revenueData = await _supabase
               .from('service_requests')
-              .select('service_type, total_amount, created_at')
+              .select('service_type, total_amount, updated_at')
               .not('total_amount', 'is', null);
 
           final revenueByService = <String, double>{};
@@ -193,22 +236,20 @@ class ReportService {
   // Platform-specific file download
   static Future<void> _downloadFile(List<int> bytes, String fileName) async {
     if (kIsWeb) {
-      // Web download
-      final blob = html.Blob([Uint8List.fromList(bytes)]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', fileName)
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      // ...existing code...
     } else {
-      // Mobile/Desktop download
       try {
-        final directory = await getApplicationDocumentsDirectory();
+        Directory? directory;
+        if (Platform.isAndroid) {
+          directory = Directory('/storage/emulated/0/Download');
+        } else {
+          directory = await getApplicationDocumentsDirectory();
+        }
         final file = File('${directory.path}/$fileName');
         await file.writeAsBytes(bytes);
-
-        // For mobile, we could also use the share functionality
-        // or save to Downloads folder with proper permissions
+        print('Archivo guardado en: ${file.path}');
+        // Abrir la carpeta de descargas
+        await OpenFile.open(directory.path);
       } catch (e) {
         throw Exception('Failed to save file: $e');
       }
@@ -308,11 +349,34 @@ class ReportService {
 
     if (data['serviceRequests'] != null) {
       buffer.writeln('Service Requests');
-      buffer
-          .writeln('ID,Customer,Service Type,Status,Created Date,Total Amount');
-      for (final request in data['serviceRequests']) {
+      if (data['title'] == 'SUMMARY ORDERS') {
         buffer.writeln(
-            '${request['id']},${request['customers']?['full_name'] ?? 'N/A'},${request['service_type']},${request['status']},${request['created_at']},${request['total_amount'] ?? 0}');
+            'Order Number,Tecnico,Updated At,Status,Customer Name,Service Type,Observations,Duration');
+        for (final request in data['serviceRequests']) {
+          buffer.writeln('${request['order_number'] ?? ''},'
+              '${request['user_profiles'] != null && request['user_profiles']['full_name'] != null ? request['user_profiles']['full_name'] : ''},'
+              '${request['updated_at'] ?? ''},'
+              '${request['status'] ?? ''},'
+              '${request['customer_name'] ?? ''},'
+              '${request['service_type'] ?? ''},'
+              '${request['observations'] ?? ''},'
+              '${request['duration'] ?? ''}');
+        }
+      } else if (data['title'] == 'SUMMARY PAYMENTS') {
+        buffer.writeln('Order Number,Technician Name,Customer Name,Amount');
+        for (final request in data['serviceRequests']) {
+          buffer.writeln('${request['order_number'] ?? ''},'
+              '${request['user_profiles'] != null && request['user_profiles']['full_name'] != null ? request['user_profiles']['full_name'] : ''},'
+              '${request['customer_name'] ?? ''},'
+              '${request['amount'] ?? ''}');
+        }
+      } else {
+        buffer.writeln(
+            'ID,Customer,Service Type,Status,Created Date,Total Amount');
+        for (final request in data['serviceRequests']) {
+          buffer.writeln(
+              '${request['id']},${request['customers']?['full_name'] ?? 'N/A'},${request['service_type']},${request['status']},${request['created_at']},${request['total_amount'] ?? 0}');
+        }
       }
     }
 

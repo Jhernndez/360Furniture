@@ -1,15 +1,4 @@
-  // Get possible status values from Supabase enum
-  Future<List<String>> getStatusOptions() async {
-    // Consulta directa a la función de Postgres para enums
-    final response = await client.rpc('get_enum_values', params: {'table_name': 'service_request_status'});
-    if (response is List) {
-      return response.cast<String>();
-    }
-    // Fallback si la función no existe: usar los valores hardcodeados
-    return ['pending', 'in_progress', 'completed', 'cancelled'];
-  }
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import './supabase_service.dart';
 
 class ServiceRequestService {
@@ -19,10 +8,17 @@ class ServiceRequestService {
 
   ServiceRequestService._();
 
+  // Get possible status values from Supabase enum
+  Future<List<String>> getStatusOptions() async {
+    // Usar los valores hardcodeados del enum real
+    return ['Complete', 'Partial', 'Report', 'cancelled'];
+  }
+
   SupabaseClient get client => SupabaseService.instance.client;
 
-  // Get all service requests (for admin/supervisor)
+  // Get all service requests (for admin)
   Future<List<Map<String, dynamic>>> getAllServiceRequests() async {
+    // Eliminado bucle sobre 'list' no definido. La lógica correcta está después de obtener la respuesta.
     try {
       final response = await client.from('service_requests').select('''
             *,
@@ -35,7 +31,19 @@ class ServiceRequestService {
         return [];
       }
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      final List<Map<String, dynamic>> list =
+          List<Map<String, dynamic>>.from(response);
+      // Agregar technician_name a cada registro usando user_profiles['full_name']
+      for (final item in list) {
+        if (item['user_profiles'] != null &&
+            item['user_profiles'] is Map &&
+            item['user_profiles']['full_name'] != null) {
+          item['technician_name'] = item['user_profiles']['full_name'];
+        } else {
+          item['technician_name'] = '';
+        }
+      }
+      return list;
     } catch (error) {
       print('Error fetching service requests: $error');
       return [];
@@ -66,7 +74,7 @@ class ServiceRequestService {
         return [];
       }
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      return List<Map<String, dynamic>>.from(response);
     } catch (error) {
       print('Error fetching my service requests: $error');
       return [];
@@ -88,7 +96,7 @@ class ServiceRequestService {
         return [];
       }
 
-      return List<Map<String, dynamic>>.from(response ?? []);
+      return List<Map<String, dynamic>>.from(response);
     } catch (error) {
       print('Error fetching service requests by status: $error');
       return [];
@@ -152,8 +160,6 @@ class ServiceRequestService {
               ''').single();
 
           return Map<String, dynamic>.from(response);
-
-          throw Exception('Empty response from server');
         } catch (e) {
           retries++;
           print('Service request creation attempt $retries failed: $e');
@@ -210,14 +216,13 @@ class ServiceRequestService {
       updates['completed_date'] = DateTime.now().toIso8601String();
     }
     try {
-      final response =
-          await client.from('service_requests').update(updates).eq('id', id);
+      await client.from('service_requests').update(updates).eq('id', id);
       // Supabase devuelve [] si no hay filas afectadas, pero si la orden existe y el estado cambia, la respuesta puede ser vacía pero exitosa
       // Considerar éxito si no hay excepción
       return;
     } catch (error) {
-      throw Exception('Supabase error: ' +
-          (error is PostgrestException ? error.message : error.toString()));
+      throw Exception(
+          'Supabase error: ${error is PostgrestException ? error.message : error.toString()}');
     }
   }
 
@@ -284,10 +289,10 @@ class ServiceRequestService {
           await client.from('service_requests').select('id').count();
 
       return {
-        'pending': pendingResponse.count ?? 0,
-        'in_progress': inProgressResponse.count ?? 0,
-        'completed': completedResponse.count ?? 0,
-        'total': totalResponse.count ?? 0,
+        'pending': pendingResponse.count,
+        'in_progress': inProgressResponse.count,
+        'completed': completedResponse.count,
+        'total': totalResponse.count,
       };
     } catch (error) {
       print('Error fetching dashboard stats: $error');

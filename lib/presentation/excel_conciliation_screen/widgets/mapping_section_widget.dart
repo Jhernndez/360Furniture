@@ -4,6 +4,49 @@ import '../../../core/app_export.dart';
 import '../../../theme/app_theme.dart';
 
 class MappingSectionWidget extends StatelessWidget {
+  /// Intenta mapear automáticamente los campos de Supabase a las columnas del Excel por nombre
+  String _normalize(String s) {
+    return s.toLowerCase().replaceAll(RegExp(r'[_\-\s]'), '');
+  }
+
+  Map<String, String> _autoDetectMapping(
+      List<String> excelColumns, List<Map<String, String>> supabaseFields) {
+    Map<String, String> mapping = {};
+    for (final field in supabaseFields) {
+      final key = field['key']!;
+      final label = field['label']!;
+      final normalizedLabel = _normalize(label);
+      // Busca coincidencia exacta normalizada
+      String match = excelColumns.firstWhere(
+        (col) => _normalize(col) == normalizedLabel,
+        orElse: () => '',
+      );
+      if (match.isNotEmpty) {
+        mapping[key] = match;
+        continue;
+      }
+      // Si no hay coincidencia exacta, buscar por palabras clave
+      final col = excelColumns.firstWhere(
+        (col) {
+          final colLower = col.toLowerCase();
+          if (key.contains('order') && colLower.contains('order')) return true;
+          if (key.contains('amount') && colLower.contains('amount'))
+            return true;
+          if (key.contains('customer') && colLower.contains('customer'))
+            return true;
+          if (key.contains('technician') && colLower.contains('tech'))
+            return true;
+          return false;
+        },
+        orElse: () => '',
+      );
+      if (col.isNotEmpty) {
+        mapping[key] = col;
+      }
+    }
+    return mapping;
+  }
+
   final List<Map<String, dynamic>> excelData;
   final Map<String, String> columnMapping;
   final Function(String, String) onMappingUpdate;
@@ -22,7 +65,27 @@ class MappingSectionWidget extends StatelessWidget {
     if (excelData.isEmpty) return const SizedBox.shrink();
 
     List<String> excelColumns = excelData.first.keys.toList();
-    List<String> systemFields = ['Order ID', 'Amount', 'Date', 'Service Type'];
+    // Campos reales de Supabase para mapeo
+    final List<Map<String, String>> supabaseFields = [
+      {'key': 'order_number', 'label': 'Order Number'},
+      {'key': 'amount', 'label': 'Amount'},
+      {'key': 'customer_name', 'label': 'Customer Name'},
+      {'key': 'technician_name', 'label': 'Technician Name'},
+      // Agrega más campos si es necesario
+    ];
+
+    // Generar sugerencias automáticas para todos los campos
+    final Map<String, String> autoMapping =
+        _autoDetectMapping(excelColumns, supabaseFields);
+
+    // Aplicar automáticamente el mapping detectado para cualquier campo que falte
+    Future.microtask(() {
+      autoMapping.forEach((key, value) {
+        if (value.isNotEmpty && columnMapping[key] != value) {
+          onMappingUpdate(key, value);
+        }
+      });
+    });
 
     return Card(
       elevation: 2,
@@ -74,7 +137,7 @@ class MappingSectionWidget extends StatelessWidget {
             const SizedBox(height: 16),
 
             Text(
-              'Match Excel columns to system fields for accurate reconciliation',
+              'Match Excel columns to Supabase fields for accurate reconciliation',
               style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                     color: AppTheme.textSecondaryLight,
                   ),
@@ -82,48 +145,73 @@ class MappingSectionWidget extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Mapping dropdowns
-            ...systemFields
-                .map((systemField) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Container(
+            // Mapping automático: si hay coincidencia exacta, mostrar solo el valor asignado, si no, mostrar el selector
+            ...supabaseFields.map((field) {
+              final key = field['key']!;
+              final label = field['label']!;
+              final autoValue = autoMapping[key] ?? '';
+              final normalizedLabel = _normalize(label);
+              final exactMatch =
+                  excelColumns.any((col) => _normalize(col) == normalizedLabel);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLight.withAlpha(26),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: AppTheme.primaryLight.withAlpha(77)),
+                        ),
+                        child: Text(
+                          label,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryLight,
+                                  ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(Icons.arrow_forward,
+                        color: AppTheme.textSecondaryLight),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 3,
+                      child: exactMatch && autoValue.isNotEmpty
+                          ? Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryLight.withAlpha(26),
+                                color: Colors.green.withAlpha(13),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                    color: AppTheme.primaryLight.withAlpha(77)),
+                                    color: Colors.green.withAlpha(77)),
                               ),
                               child: Text(
-                                systemField,
+                                autoValue,
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium!
                                     .copyWith(
+                                      color: Colors.green.shade700,
                                       fontWeight: FontWeight.w600,
-                                      color: AppTheme.primaryLight,
                                     ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Icon(Icons.arrow_forward,
-                              color: AppTheme.textSecondaryLight),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 3,
-                            child: Container(
+                            )
+                          : Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
                               child: DropdownButtonFormField<String>(
-                                initialValue: columnMapping[systemField],
+                                initialValue: autoValue,
                                 decoration: const InputDecoration(
                                   contentPadding: EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 8),
@@ -154,7 +242,7 @@ class MappingSectionWidget extends StatelessWidget {
                                 ],
                                 onChanged: (value) {
                                   if (value != null) {
-                                    onMappingUpdate(systemField, value);
+                                    onMappingUpdate(key, value);
                                   }
                                 },
                                 dropdownColor: Colors.white,
@@ -162,11 +250,11 @@ class MappingSectionWidget extends StatelessWidget {
                                     color: AppTheme.textSecondaryLight),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ))
-                .toList(),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
 
             // Auto-detection info
             if (columnMapping.isNotEmpty) ...[

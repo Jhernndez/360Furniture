@@ -28,7 +28,11 @@ class AppRoutes {
     orderDashboard: (context) => const OrderDashboard(),
     createOrderScreen: (context) => const CreateOrderScreen(),
     orderListScreen: (context) => const OrderListScreen(),
-    orderDetailScreen: (context) => const OrderDetailScreen(),
+    orderDetailScreen: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return OrderDetailScreen(order: args != null ? args['order'] : null);
+    },
     technicianProfileScreen: (context) => const TechnicianProfileScreen(),
     adminDashboard: (context) => const AdminDashboard(),
     reportsDashboardScreen: (context) => const ReportsDashboardScreen(),

@@ -333,17 +333,9 @@ class GeneratedReportsWidget extends StatelessWidget {
 
   IconData _getReportIcon(String type) {
     switch (type) {
-      case 'Performance Summary':
+      case 'Summary Orders':
         return Icons.trending_up;
-      case 'Financial Overview':
-        return Icons.attach_money;
-      case 'Service Analysis':
-        return Icons.build;
-      case 'Customer Insights':
-        return Icons.people;
-      case 'System Analytics':
-        return Icons.dashboard;
-      case 'Revenue Analysis':
+      case 'Summary Payments':
         return Icons.show_chart;
       default:
         return Icons.description;
@@ -376,48 +368,15 @@ class GeneratedReportsWidget extends StatelessWidget {
         'status': ReportStatus.completed,
       },
       {
-        'name': 'Financial Overview - Monthly',
-        'type': 'Financial Overview',
+        'name': 'Performance Summary - Monthly',
+        'type': 'Performance Summary',
         'period': 'Monthly',
         'createdAt': DateTime.now().subtract(const Duration(days: 1)),
         'size': '4.2 MB',
         'status': ReportStatus.completed,
       },
-      {
-        'name': 'Service Analysis - Daily',
-        'type': 'Service Analysis',
-        'period': 'Daily',
-        'createdAt': DateTime.now().subtract(const Duration(minutes: 30)),
-        'size': '1.8 MB',
-        'status': ReportStatus.generating,
-      },
-      {
-        'name': 'Customer Insights - Weekly',
-        'type': 'Customer Insights',
-        'period': 'Weekly',
-        'createdAt': DateTime.now().subtract(const Duration(days: 3)),
-        'size': '3.1 MB',
-        'status': ReportStatus.completed,
-      },
-      if (isAdmin) ...[
-        {
-          'name': 'System Analytics - Monthly',
-          'type': 'System Analytics',
-          'period': 'Monthly',
-          'createdAt': DateTime.now().subtract(const Duration(hours: 6)),
-          'size': '8.7 MB',
-          'status': ReportStatus.downloading,
-          'downloadProgress': 0.65,
-        },
-        {
-          'name': 'Revenue Analysis - Weekly',
-          'type': 'Revenue Analysis',
-          'period': 'Weekly',
-          'createdAt': DateTime.now().subtract(const Duration(days: 2)),
-          'size': '5.3 MB',
-          'status': ReportStatus.failed,
-        },
-      ],
+
+      // No admin-only reports
     ];
   }
 }

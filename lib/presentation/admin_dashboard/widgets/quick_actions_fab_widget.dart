@@ -5,13 +5,13 @@ import '../../../core/app_export.dart';
 
 class QuickActionsFabWidget extends StatefulWidget {
   final VoidCallback onAddTechnician;
-  final VoidCallback onGenerateReport;
+  final VoidCallback onAddCustomer;
   final VoidCallback onExportData;
 
   const QuickActionsFabWidget({
     Key? key,
     required this.onAddTechnician,
-    required this.onGenerateReport,
+    required this.onAddCustomer,
     required this.onExportData,
   }) : super(key: key);
 
@@ -81,12 +81,13 @@ class _QuickActionsFabWidgetState extends State<QuickActionsFabWidget>
                       },
                     ),
                     SizedBox(height: 1.h),
+                    // Botón 'Generate Report' eliminado
                     _buildActionButton(
-                      icon: 'assessment',
-                      label: 'Generate Report',
+                      icon: 'person',
+                      label: 'Add Customer',
                       onPressed: () {
                         _toggleExpanded();
-                        widget.onGenerateReport();
+                        widget.onAddCustomer();
                       },
                     ),
                     SizedBox(height: 1.h),

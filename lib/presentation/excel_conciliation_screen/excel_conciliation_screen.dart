@@ -27,13 +27,14 @@ class ExcelConciliationScreen extends StatefulWidget {
 }
 
 class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
-  final ServiceRequestService _serviceRequestService = ServiceRequestService.instance;
+  final ServiceRequestService _serviceRequestService =
+      ServiceRequestService.instance;
 
   List<Map<String, dynamic>> _excelData = [];
   List<Map<String, dynamic>> _systemData = [];
   Map<String, String> _columnMapping = {};
-  List<Map<String, dynamic>> _discrepancies = [];
-  Map<String, int> _reconciliationSummary = {
+  final List<Map<String, dynamic>> _discrepancies = [];
+  Map<String, dynamic> _reconciliationSummary = {
     'totalRecords': 0,
     'matchesFound': 0,
     'discrepanciesDetected': 0,
@@ -44,8 +45,8 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
   bool _isMappingComplete = false;
   bool _isReconciliationComplete = false;
   String _processingStatus = '';
-  List<String> _processingLogs = [];
-  List<Map<String, dynamic>> _results = [];
+  final List<String> _processingLogs = [];
+  final List<Map<String, dynamic>> _results = [];
   String? _selectedFile;
 
   @override
@@ -98,16 +99,26 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
         _processingStatus = 'Parsing file data...';
       });
 
-      // Simulate CSV parsing (in real app, use csv package)
+      // Mejorado: buscar línea de headers real y parsear desde ahí
       if (extension == 'csv') {
         String content = utf8.decode(bytes);
         List<String> lines = content.split('\n');
-        if (lines.isNotEmpty) {
-          List<String> headers = lines[0].split(',');
+        int headerIndex = -1;
+        List<String> headers = [];
+        // Buscar la línea que contiene los headers reales
+        for (int i = 0; i < lines.length; i++) {
+          if (lines[i].contains('Order Number') &&
+              lines[i].contains('Amount')) {
+            headerIndex = i;
+            headers = lines[i].split(',');
+            break;
+          }
+        }
+        if (headerIndex != -1 && headers.isNotEmpty) {
           List<Map<String, dynamic>> data = [];
-
-          for (int i = 1; i < lines.length && i < 11; i++) {
-            // Limit preview to 10 rows
+          for (int i = headerIndex + 1;
+              i < lines.length && data.length < 10;
+              i++) {
             if (lines[i].trim().isNotEmpty) {
               List<String> values = lines[i].split(',');
               Map<String, dynamic> row = {};
@@ -117,11 +128,12 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
               data.add(row);
             }
           }
-
           setState(() {
             _excelData = data;
             _autoDetectMapping();
           });
+        } else {
+          _showErrorDialog('No se encontraron headers válidos en el archivo.');
         }
       }
     } catch (e) {
@@ -165,18 +177,24 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
   void _updateColumnMapping(String systemField, String excelColumn) {
     setState(() {
       _columnMapping[systemField] = excelColumn;
+      print('[DEBUG] _columnMapping actualizado: $_columnMapping');
       _checkMappingComplete();
     });
   }
 
   void _checkMappingComplete() {
-    bool complete = [
-      'Order ID',
-      'Amount',
-      'Date',
-      'Service Type'
-    ].every((field) =>
+    // Validar los campos requeridos para la conciliación actual
+    final requiredFields = [
+      'order_number',
+      'technician_name',
+      'customer_name',
+      'amount',
+    ];
+    print('[DEBUG] Revisando mapeo. Campos requeridos: $requiredFields');
+    print('[DEBUG] Estado actual de _columnMapping: $_columnMapping');
+    bool complete = requiredFields.every((field) =>
         _columnMapping.containsKey(field) && _columnMapping[field]!.isNotEmpty);
+    print('[DEBUG] ¿Está completo el mapeo? $complete');
     setState(() {
       _isMappingComplete = complete;
     });
@@ -211,6 +229,22 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
     int discrepanciesDetected = 0;
     int missingEntries = 0;
 
+    // Calcular suma de amounts del archivo Excel
+    double excelAmountSum = 0;
+    for (final row in _excelData) {
+      String amountStr = row[_columnMapping['amount']] ?? '0';
+      double excelAmount =
+          double.tryParse(amountStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+      excelAmountSum += excelAmount;
+    }
+
+    // Calcular suma de amounts del sistema
+    double systemAmountSum = 0;
+    for (final request in _systemData) {
+      double systemAmount = (request['amount'] as num?)?.toDouble() ?? 0;
+      systemAmountSum += systemAmount;
+    }
+
     setState(() {
       _processingStatus = 'Comparing records...';
     });
@@ -218,59 +252,70 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
     for (int i = 0; i < _excelData.length; i++) {
       Map<String, dynamic> excelRow = _excelData[i];
 
-      // Extract mapped values
-      String orderId = excelRow[_columnMapping['Order ID']] ?? '';
-      String amountStr = excelRow[_columnMapping['Amount']] ?? '0';
-      String dateStr = excelRow[_columnMapping['Date']] ?? '';
-      String serviceTypeStr = excelRow[_columnMapping['Service Type']] ?? '';
+      // Extraer valores mapeados usando claves en minúsculas
+      String orderNumber = excelRow[_columnMapping['order_number']] ?? '';
+      String technicianName = excelRow[_columnMapping['technician_name']] ?? '';
+      String customerName = excelRow[_columnMapping['customer_name']] ?? '';
+      String amountStr = excelRow[_columnMapping['amount']] ?? '0';
 
-      // Find matching system record
-      Map<String, dynamic>? matchingRequest =
-          _systemData.cast<Map<String, dynamic>?>().firstWhere(
-                (request) =>
-                    request?['id'] == orderId ||
-                    (request?['title']?.toString().contains(orderId) == true),
-                orElse: () => null,
-              );
-
-      if (matchingRequest != null) {
-        // Compare values
-        double excelAmount =
-            double.tryParse(amountStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-        double systemAmount = (matchingRequest['total_cost'] as num?)?.toDouble() ?? 0;
-
-        if ((excelAmount - systemAmount).abs() > 0.01) {
-          discrepanciesDetected++;
-          _discrepancies.add({
-            'orderId': orderId,
-            'type': 'Amount Mismatch',
-            'excelValue': excelAmount,
-            'systemValue': systemAmount,
-            'difference': (excelAmount - systemAmount).abs(),
-          });
-        } else {
-          matchesFound++;
-          _results.add({
-            'orderId': orderId,
-            'status': 'match',
-            'details': 'Successfully matched',
-          });
+      print(
+          '[DEBUG] Buscando match para: orderNumber="$orderNumber", technicianName="$technicianName", customerName="$customerName"');
+      bool found = false;
+      for (final request in _systemData) {
+        print(
+            '[DEBUG] Comparando con registro sistema: order_number="${request['order_number']}", technician_name="${request['technician_name']}", customer_name="${request['customer_name']}"');
+        if ((request['order_number']?.toString().trim() ==
+                orderNumber.trim()) &&
+            (request['technician_name']?.toString().trim().toLowerCase() ==
+                technicianName.trim().toLowerCase()) &&
+            (request['customer_name']?.toString().trim().toLowerCase() ==
+                customerName.trim().toLowerCase())) {
+          found = true;
+          double excelAmount =
+              double.tryParse(amountStr.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                  0;
+          double systemAmount = (request['amount'] as num?)?.toDouble() ?? 0;
+          print(
+              '[DEBUG] ¡Match encontrado! excelAmount=$excelAmount, systemAmount=$systemAmount');
+          if ((excelAmount - systemAmount).abs() > 0.01) {
+            discrepanciesDetected++;
+            _discrepancies.add({
+              'orderNumber': orderNumber,
+              'technicianName': technicianName,
+              'customerName': customerName,
+              'type': 'Amount Mismatch',
+              'excelValue': excelAmount,
+              'systemValue': systemAmount,
+              'difference': (excelAmount - systemAmount).abs(),
+            });
+          } else {
+            matchesFound++;
+            _results.add({
+              'orderNumber': orderNumber,
+              'technicianName': technicianName,
+              'customerName': customerName,
+              'status': 'match',
+              'details': 'Successfully matched',
+            });
+          }
+          break;
         }
-      } else {
+      }
+      if (!found) {
+        print('[DEBUG] No se encontró match para este registro.');
         missingEntries++;
         _results.add({
-          'orderId': orderId,
+          'orderNumber': orderNumber,
+          'technicianName': technicianName,
+          'customerName': customerName,
           'status': 'missing',
           'details': 'Not found in system',
         });
       }
 
-      // Update progress
       setState(() {
         _processingStatus = 'Processing record ${i + 1} of $totalRecords';
       });
-
-      // Add small delay for UI updates
       await Future.delayed(const Duration(milliseconds: 50));
     }
 
@@ -280,6 +325,8 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
         'matchesFound': matchesFound,
         'discrepanciesDetected': discrepanciesDetected,
         'missingEntries': missingEntries,
+        'amountDifference':
+            double.parse((excelAmountSum - systemAmountSum).toStringAsFixed(2)),
       };
     });
   }
@@ -291,10 +338,11 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
     }
 
     try {
-      String csvContent = 'Order ID,Type,Excel Value,System Value,Difference\n';
+      String csvContent =
+          'Order Number,Technician Name,Customer Name,Type,Excel Value,System Value,Difference\n';
       for (var discrepancy in _discrepancies) {
         csvContent +=
-            '${discrepancy['orderId']},${discrepancy['type']},${discrepancy['excelValue']},${discrepancy['systemValue']},${discrepancy['difference']}\n';
+            '${discrepancy['orderNumber']},${discrepancy['technicianName']},${discrepancy['customerName']},${discrepancy['type']},${discrepancy['excelValue']},${discrepancy['systemValue']},${discrepancy['difference']}\n';
       }
 
       await _downloadFile(csvContent,
@@ -311,7 +359,7 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
         final bytes = utf8.encode(content);
         final blob = html.Blob([bytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
+        html.AnchorElement(href: url)
           ..setAttribute("download", filename)
           ..click();
         html.Url.revokeObjectUrl(url);

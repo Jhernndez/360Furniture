@@ -67,7 +67,7 @@ class UserProfile {
   // Role checking methods
   bool get isAdmin => role == 'admin';
   bool get isTechnician => role == 'technician';
-  bool get isSupervisor => role == 'supervisor';
+  // Removed supervisor role support
 
   String get roleDisplay {
     switch (role) {
@@ -75,8 +75,6 @@ class UserProfile {
         return 'Administrador';
       case 'technician':
         return 'Técnico';
-      case 'supervisor':
-        return 'Supervisor';
       default:
         return role;
     }

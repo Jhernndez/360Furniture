@@ -4,17 +4,64 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/app_export.dart';
 
-class CustomerDetailsWidget extends StatelessWidget {
+class CustomerDetailsWidget extends StatefulWidget {
   final Map<String, dynamic> orderData;
   final bool isEditing;
   final void Function(String field, dynamic value) onChanged;
 
   const CustomerDetailsWidget({
-    Key? key,
+    super.key,
     required this.orderData,
     required this.isEditing,
     required this.onChanged,
-  }) : super(key: key);
+  });
+
+  @override
+  State<CustomerDetailsWidget> createState() => _CustomerDetailsWidgetState();
+}
+
+class _CustomerDetailsWidgetState extends State<CustomerDetailsWidget> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _addressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+        text: widget.orderData['customerName'] as String? ?? '');
+    _phoneController = TextEditingController(
+        text: widget.orderData['customerPhone'] as String? ?? '');
+    _addressController = TextEditingController(
+        text: widget.orderData['customerAddress'] as String? ?? '');
+  }
+
+  @override
+  void didUpdateWidget(CustomerDetailsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.orderData['customerName'] !=
+        oldWidget.orderData['customerName']) {
+      _nameController.text = widget.orderData['customerName'] as String? ?? '';
+    }
+    if (widget.orderData['customerPhone'] !=
+        oldWidget.orderData['customerPhone']) {
+      _phoneController.text =
+          widget.orderData['customerPhone'] as String? ?? '';
+    }
+    if (widget.orderData['customerAddress'] !=
+        oldWidget.orderData['customerAddress']) {
+      _addressController.text =
+          widget.orderData['customerAddress'] as String? ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
@@ -37,9 +84,10 @@ class CustomerDetailsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final customerName = orderData['customerName'] as String? ?? '';
-    final customerPhone = orderData['customerPhone'] as String? ?? '';
-    final customerAddress = orderData['customerAddress'] as String? ?? '';
+    final customerName = widget.orderData['customerName'] as String? ?? '';
+    final customerPhone = widget.orderData['customerPhone'] as String? ?? '';
+    final customerAddress =
+        widget.orderData['customerAddress'] as String? ?? '';
 
     return Container(
       width: double.infinity,
@@ -66,38 +114,38 @@ class CustomerDetailsWidget extends StatelessWidget {
             ),
           ),
           SizedBox(height: 3.h),
-          isEditing
+          widget.isEditing
               ? TextField(
                   decoration: InputDecoration(
                     labelText: 'Nombre',
                     prefixIcon: Icon(Icons.person),
                   ),
-                  controller: TextEditingController(text: customerName),
-                  onChanged: (val) => onChanged('customerName', val),
+                  controller: _nameController,
+                  onChanged: (val) => widget.onChanged('customerName', val),
                 )
               : _buildDetailRow('Nombre', customerName, 'person', null),
           SizedBox(height: 2.h),
-          isEditing
+          widget.isEditing
               ? TextField(
                   decoration: InputDecoration(
                     labelText: 'Teléfono',
                     prefixIcon: Icon(Icons.phone),
                   ),
                   keyboardType: TextInputType.phone,
-                  controller: TextEditingController(text: customerPhone),
-                  onChanged: (val) => onChanged('customerPhone', val),
+                  controller: _phoneController,
+                  onChanged: (val) => widget.onChanged('customerPhone', val),
                 )
               : _buildDetailRow('Teléfono', customerPhone, 'phone',
                   () => _makePhoneCall(customerPhone)),
           SizedBox(height: 2.h),
-          isEditing
+          widget.isEditing
               ? TextField(
                   decoration: InputDecoration(
                     labelText: 'Dirección',
                     prefixIcon: Icon(Icons.location_on),
                   ),
-                  controller: TextEditingController(text: customerAddress),
-                  onChanged: (val) => onChanged('customerAddress', val),
+                  controller: _addressController,
+                  onChanged: (val) => widget.onChanged('customerAddress', val),
                 )
               : _buildDetailRow('Dirección', customerAddress, 'location_on',
                   () => _openMaps(customerAddress)),

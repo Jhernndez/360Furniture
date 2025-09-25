@@ -1862,7 +1862,6 @@ class CustomIconWidget extends StatelessWidget {
       'summarize': Icons.summarize,
       'superscript': Icons.superscript,
       'supervised_user_circle': Icons.supervised_user_circle,
-      'supervisor_account': Icons.supervisor_account,
       'support': Icons.support,
       'support_agent': Icons.support_agent,
       'surfing': Icons.surfing,

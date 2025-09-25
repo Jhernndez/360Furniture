@@ -422,7 +422,7 @@ class UserService {
   static Future<bool> cambiarClaveUsuarioAdmin(
       String userId, String nuevaClave) async {
     final url = Uri.parse(
-        'http://localhost:3000/change-password'); // Cambia localhost si tu backend está en otro host
+        'http://10.0.2.2:3000/change-password'); // Cambia localhost si tu backend está en otro host
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -447,8 +447,6 @@ class UserService {
       final adminCount = allUsers.where((u) => u.role == 'admin').length;
       final technicianCount =
           allUsers.where((u) => u.role == 'technician').length;
-      final supervisorCount =
-          allUsers.where((u) => u.role == 'supervisor').length;
 
       // Get active/inactive counts
       final activeUsers = allUsers.where((u) => u.isActive).length;
@@ -458,7 +456,6 @@ class UserService {
         'totalUsers': allUsers.length,
         'adminCount': adminCount,
         'technicianCount': technicianCount,
-        'supervisorCount': supervisorCount,
         'activeUsers': activeUsers,
         'inactiveUsers': inactiveUsers,
       };
@@ -468,7 +465,6 @@ class UserService {
         'totalUsers': 0,
         'adminCount': 0,
         'technicianCount': 0,
-        'supervisorCount': 0,
         'activeUsers': 0,
         'inactiveUsers': 0,
       };

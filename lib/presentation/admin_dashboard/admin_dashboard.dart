@@ -1,3 +1,4 @@
+import '../customer_management/create_customer_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -10,7 +11,7 @@ import '../../services/supabase_service.dart';
 import '../../services/user_service.dart';
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({Key? key}) : super(key: key);
+  const AdminDashboard({super.key});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -28,6 +29,19 @@ class _AdminDashboardState extends State<AdminDashboard>
   String _selectedPeriod = 'Weekly';
   late TabController _tabController;
 
+  void _handleAddCustomer() async {
+    await showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const CreateCustomerDialog(),
+      ),
+    );
+    // Aquí puedes refrescar la lista de clientes si es necesario
+  }
+
   // Métodos después
   void _navigateToUserManagementAndAdd() {
     // Navigate to user management screen
@@ -37,10 +51,6 @@ class _AdminDashboardState extends State<AdminDashboard>
         builder: (context) => const UserManagementScreen(),
       ),
     );
-  }
-
-  void _handleGenerateReport() {
-    Navigator.pushNamed(context, '/reports-dashboard-screen');
   }
 
   void _handleExportData() {
@@ -117,27 +127,26 @@ class _AdminDashboardState extends State<AdminDashboard>
       final orders = await SupabaseService.instance.client
           .from('service_requests')
           .select();
-      print('ORDERS FETCHED:');
-      print(orders);
+      // print('ORDERS FETCHED:');
+      // print(orders);
       // Órdenes completadas
       final completed = orders.where((o) => o['status'] == 'completed').length;
       // Suma total de amount de todas las órdenes
-      double totalAmount = 0.0;
+      // double totalAmount = 0.0;
       // Suma de órdenes por técnico
       final Map<String, double> technicianOrderSums = {};
       for (final o in orders) {
         final amount = (o['amount'] as num?)?.toDouble() ??
             (o['total_amount'] as num?)?.toDouble() ??
             0.0;
-        totalAmount += amount;
         final techId = o['technician_id']?.toString();
         if (techId != null && techId.isNotEmpty) {
           technicianOrderSums[techId] =
               (technicianOrderSums[techId] ?? 0.0) + amount;
         }
       }
-      print('TOTAL AMOUNT SUM:');
-      print(totalAmount);
+      // print('TOTAL AMOUNT SUM:');
+      // print(totalAmount);
       // Añadir suma de órdenes a cada técnico
       final techListWithSums = techList.map((tech) {
         final techId = tech['id']?.toString();
@@ -153,7 +162,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         _isLoadingUsers = false;
       });
     } catch (e) {
-      print('Error al obtener datos del dashboard: $e');
+      // print('Error al obtener datos del dashboard: $e');
       setState(() => _isLoadingUsers = false);
     }
   }
@@ -183,7 +192,7 @@ class _AdminDashboardState extends State<AdminDashboard>
       floatingActionButton: _selectedTabIndex == 0
           ? QuickActionsFabWidget(
               onAddTechnician: _handleAddTechnician,
-              onGenerateReport: _handleGenerateReport,
+              onAddCustomer: _handleAddCustomer,
               onExportData: _handleExportData,
             )
           : null,
@@ -393,7 +402,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
             Expanded(
               child: MetricCardWidget(
-                title: 'Completion Rate',
+                title: 'Total Customers',
                 value: '${completionRate.toStringAsFixed(1)}%',
                 subtitle: '+5.2% from last $_selectedPeriod',
                 trendIcon: 'trending_up',
@@ -404,9 +413,9 @@ class _AdminDashboardState extends State<AdminDashboard>
           ],
         ),
         MetricCardWidget(
-          title: 'Total To Pay',
+          title: 'Total To Pay (USD)',
           value: '\$${_calculateTotalToPay().toStringAsFixed(2)}',
-          subtitle: '+18.5% from last $_selectedPeriod',
+          subtitle: 'Total of Technicians $_selectedPeriod',
           trendIcon: 'trending_up',
           trendColor: AppTheme.successLight,
           onTap: () {},
@@ -422,27 +431,30 @@ class _AdminDashboardState extends State<AdminDashboard>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'User Management',
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserManagementScreen(),
+              Expanded(
+                child: Text(
+                  'User Management',
+                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                icon: CustomIconWidget(
-                  iconName: 'manage_accounts',
-                  color: Colors.white,
-                  size: 18,
+              ),
+              Flexible(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserManagementScreen(),
+                    ),
+                  ),
+                  icon: CustomIconWidget(
+                    iconName: 'manage_accounts',
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  label: const Text('Manage Users'),
                 ),
-                label: const Text('Manage Users'),
               ),
             ],
           ),
@@ -672,26 +684,8 @@ class _AdminDashboardState extends State<AdminDashboard>
           ),
           SizedBox(height: 2.h),
           _buildReportCard(
-            'Weekly Performance Report',
-            'Detailed analysis of technician performance and order completion rates',
-            'assessment',
-            () => Navigator.pushNamed(context, '/reports-dashboard-screen'),
-          ),
-          _buildReportCard(
-            'Monthly Revenue Report',
-            'Comprehensive revenue breakdown by service type and technician',
-            'monetization_on',
-            () => Navigator.pushNamed(context, '/reports-dashboard-screen'),
-          ),
-          _buildReportCard(
-            'Payment Reconciliation',
-            'Compare registered orders with received payments',
-            'account_balance',
-            () => Navigator.pushNamed(context, '/excel-conciliation-screen'),
-          ),
-          _buildReportCard(
-            'Export All Data',
-            'Download complete database in Excel or PDF format',
+            'Export Data',
+            'Download complete database in Excel format',
             'file_download',
             () => Navigator.pushNamed(context, '/reports-dashboard-screen'),
           ),
@@ -738,103 +732,6 @@ class _AdminDashboardState extends State<AdminDashboard>
           onTap: onTap,
         ),
       ),
-    );
-  }
-
-  Widget _buildSettingsTab() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(4.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Settings',
-            style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 2.h),
-          _buildSettingsSection('General', [
-            _buildSettingsItem('Language', 'English', 'language', () {}),
-            _buildSettingsItem('Currency', 'USD (\$)', 'attach_money', () {}),
-            _buildSettingsItem('Time Zone', 'UTC-5', 'schedule', () {}),
-          ]),
-          _buildSettingsSection('Notifications', [
-            _buildSettingsItem(
-                'Push Notifications', 'Enabled', 'notifications', () {}),
-            _buildSettingsItem('Email Reports', 'Weekly', 'email', () {}),
-            _buildSettingsItem('Order Updates', 'Real-time', 'update', () {}),
-          ]),
-          _buildSettingsSection('Data & Privacy', [
-            _buildSettingsItem(
-                'Backup Data', 'Auto backup enabled', 'backup', () {}),
-            _buildSettingsItem(
-                'Data Export', 'Export user data', 'file_download', () {}),
-            _buildSettingsItem(
-                'Privacy Policy', 'View policy', 'privacy_tip', () {}),
-          ]),
-          _buildSettingsSection('Account', [
-            _buildSettingsItem('Profile', 'Manage account', 'person', () {}),
-            _buildSettingsItem(
-                'Security', 'Change password', 'security', () {}),
-            _buildSettingsItem('Sign Out', 'Log out of account', 'logout',
-                () => Navigator.pushNamed(context, '/login-screen')),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsSection(String title, List<Widget> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondaryLight,
-          ),
-        ),
-        SizedBox(height: 1.h),
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.lightTheme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(children: items),
-        ),
-        SizedBox(height: 3.h),
-      ],
-    );
-  }
-
-  Widget _buildSettingsItem(
-      String title, String subtitle, String icon, VoidCallback onTap) {
-    return ListTile(
-      leading: CustomIconWidget(
-        iconName: icon,
-        color: AppTheme.textSecondaryLight,
-        size: 24,
-      ),
-      title: Text(
-        title,
-        style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-          color: AppTheme.textSecondaryLight,
-        ),
-      ),
-      trailing: CustomIconWidget(
-        iconName: 'arrow_forward_ios',
-        color: AppTheme.textDisabledLight,
-        size: 16,
-      ),
-      onTap: onTap,
     );
   }
 
@@ -954,125 +851,132 @@ class _CreateUserDialogState extends State<CreateUserDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Crear Usuario',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre completo',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Por favor ingresa el nombre';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Por favor ingresa el email';
-                }
-                if (!value!.contains('@')) {
-                  return 'Por favor ingresa un email válido';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono (opcional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Contraseña',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value?.isEmpty ?? true) {
-                  return 'Por favor ingresa la contraseña';
-                }
-                if (value!.length < 6) {
-                  return 'La contraseña debe tener al menos 6 caracteres';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedRole,
-              decoration: const InputDecoration(
-                labelText: 'Rol',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'technician', child: Text('Técnico')),
-                DropdownMenuItem(value: 'admin', child: Text('Administrador')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedRole = value!;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _createUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
+                const Text(
+                  'Crear Usuario',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Crear',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre completo',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Por favor ingresa el nombre';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Por favor ingresa el email';
+                    }
+                    if (!value!.contains('@')) {
+                      return 'Por favor ingresa un email válido';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono (opcional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value?.isEmpty ?? true) {
+                      return 'Por favor ingresa la contraseña';
+                    }
+                    if (value!.length < 6) {
+                      return 'La contraseña debe tener al menos 6 caracteres';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Rol',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'technician', child: Text('Técnico')),
+                    DropdownMenuItem(
+                        value: 'admin', child: Text('Administrador')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedRole = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed:
+                          _isLoading ? null : () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _createUser,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Crear',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1106,7 +1010,7 @@ class _CreateUserDialogState extends State<CreateUserDialog> {
         );
       }
     } catch (e) {
-      print('Error creating user: $e');
+      // print('Error creating user: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

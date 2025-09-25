@@ -8,11 +8,11 @@ class ObservationsWidget extends StatefulWidget {
   final void Function(String field, dynamic value) onChanged;
 
   const ObservationsWidget({
-    Key? key,
+    super.key,
     required this.data,
     required this.isEditing,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<ObservationsWidget> createState() => _ObservationsWidgetState();
@@ -20,6 +20,28 @@ class ObservationsWidget extends StatefulWidget {
 
 class _ObservationsWidgetState extends State<ObservationsWidget> {
   bool _isExpanded = false;
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+        text: widget.data['observations'] as String? ?? '');
+  }
+
+  @override
+  void didUpdateWidget(covariant ObservationsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.data['observations'] != oldWidget.data['observations']) {
+      _controller.text = widget.data['observations'] as String? ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,8 +89,10 @@ class _ObservationsWidgetState extends State<ObservationsWidget> {
                     prefixIcon: Icon(Icons.note_alt),
                   ),
                   maxLines: 4,
-                  controller: TextEditingController(text: observations),
+                  controller: _controller,
                   onChanged: (val) => widget.onChanged('observations', val),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.start,
                 )
               : observations.isEmpty
                   ? Text(

@@ -16,7 +16,7 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const OrderCard({
-    Key? key,
+    super.key,
     required this.order,
     this.onEdit,
     this.onComplete,
@@ -26,7 +26,7 @@ class OrderCard extends StatelessWidget {
     this.onShare,
     this.onDelete,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +103,7 @@ class OrderCard extends StatelessWidget {
           ],
         ),
         child: GestureDetector(
-          onTap: onTap,
+          onTap: null,
           onLongPress: () => _showContextMenu(context),
           child: Container(
             padding: EdgeInsets.all(4.w),

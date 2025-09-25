@@ -4,7 +4,7 @@ import '../../../core/app_export.dart';
 import '../../../theme/app_theme.dart';
 
 class ReconciliationSummaryWidget extends StatelessWidget {
-  final Map<String, int> summary;
+  final Map<String, dynamic> summary;
 
   const ReconciliationSummaryWidget({
     super.key,
@@ -28,9 +28,9 @@ class ReconciliationSummaryWidget extends StatelessWidget {
                 Text(
                   'Reconciliation Summary',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimaryLight,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryLight,
+                      ),
                 ),
               ],
             ),
@@ -74,6 +74,41 @@ class ReconciliationSummaryWidget extends StatelessWidget {
 
             const SizedBox(height: 20),
 
+            // Diferencia de amount
+            if (summary.containsKey('amountDifference'))
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.attach_money, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Diferencia de Amount entre archivos:',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900,
+                          ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '\$${(summary['amountDifference'] as num).toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade900,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
             // Progress bar
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,16 +119,16 @@ class ReconciliationSummaryWidget extends StatelessWidget {
                     Text(
                       'Reconciliation Progress',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryLight,
-                      ),
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimaryLight,
+                          ),
                     ),
                     Text(
                       '${_getSuccessRate()}%',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: _getSuccessRateColor(),
-                      ),
+                            fontWeight: FontWeight.w600,
+                            color: _getSuccessRateColor(),
+                          ),
                     ),
                   ],
                 ),
@@ -125,15 +160,15 @@ class ReconciliationSummaryWidget extends StatelessWidget {
                       Text(
                         'Success Rate:',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimaryLight,
-                        ),
+                              color: AppTheme.textPrimaryLight,
+                            ),
                       ),
                       Text(
                         '${_getSuccessRate()}%',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: _getSuccessRateColor(),
-                        ),
+                              fontWeight: FontWeight.w600,
+                              color: _getSuccessRateColor(),
+                            ),
                       ),
                     ],
                   ),
@@ -144,15 +179,15 @@ class ReconciliationSummaryWidget extends StatelessWidget {
                       Text(
                         'Issues to Review:',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimaryLight,
-                        ),
+                              color: AppTheme.textPrimaryLight,
+                            ),
                       ),
                       Text(
                         '${(summary['discrepanciesDetected'] ?? 0) + (summary['missingEntries'] ?? 0)}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red,
-                        ),
+                              fontWeight: FontWeight.w600,
+                              color: Colors.red,
+                            ),
                       ),
                     ],
                   ),

@@ -58,7 +58,7 @@ class TechnicianPerformanceWidget extends StatelessWidget {
               ? _buildEmptyState()
               : ListView.separated(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const ClampingScrollPhysics(),
                   itemCount: technicians.length,
                   separatorBuilder: (context, index) => SizedBox(height: 1.h),
                   itemBuilder: (context, index) {

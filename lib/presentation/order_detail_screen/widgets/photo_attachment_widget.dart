@@ -14,10 +14,10 @@ class PhotoAttachmentWidget extends StatefulWidget {
   final Function(List<String>) onPhotosChanged;
 
   const PhotoAttachmentWidget({
-    Key? key,
+    super.key,
     required this.existingPhotos,
     required this.onPhotosChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<PhotoAttachmentWidget> createState() => _PhotoAttachmentWidgetState();
@@ -242,68 +242,74 @@ class _PhotoAttachmentWidgetState extends State<PhotoAttachmentWidget> {
       return _buildCameraView();
     }
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.shadowLight,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: 350, // Limita la altura máxima del área de fotos
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Fotos del Servicio',
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                  color: AppTheme.textPrimaryLight,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              InkWell(
-                onTap: _showPhotoOptions,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightTheme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: AppTheme.lightTheme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.shadowLight,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Fotos del Servicio',
+                  style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textPrimaryLight,
+                    fontWeight: FontWeight.w600,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CustomIconWidget(
-                        iconName: 'add',
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      SizedBox(width: 1.w),
-                      Text(
-                        'Agregar',
-                        style:
-                            AppTheme.lightTheme.textTheme.labelMedium?.copyWith(
+                ),
+                InkWell(
+                  onTap: _showPhotoOptions,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+                    decoration: BoxDecoration(
+                      color: AppTheme.lightTheme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CustomIconWidget(
+                          iconName: 'add',
                           color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                          size: 16,
                         ),
-                      ),
-                    ],
+                        SizedBox(width: 1.w),
+                        Text(
+                          'Agregar',
+                          style: AppTheme.lightTheme.textTheme.labelMedium
+                              ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          _photos.isEmpty ? _buildEmptyState() : _buildPhotoGrid(),
-        ],
+              ],
+            ),
+            SizedBox(height: 3.h),
+            _photos.isEmpty ? _buildEmptyState() : _buildPhotoGrid(),
+          ],
+        ),
       ),
     );
   }

@@ -11,19 +11,24 @@ class ActionButtonsWidget extends StatelessWidget {
   final VoidCallback onGenerateReport;
 
   const ActionButtonsWidget({
-    Key? key,
+    super.key,
     required this.orderData,
     required this.onUpdateStatus,
     required this.onAddPhotos,
     required this.onGenerateReport,
-  }) : super(key: key);
+  });
 
   Future<void> _shareOrder() async {
     final orderNumber = orderData['orderNumber'] as String? ?? '';
     final customerName = orderData['customerName'] as String? ?? '';
     final serviceType = orderData['serviceType'] as String? ?? '';
     final status = orderData['status'] as String? ?? '';
-    final totalAmount = orderData['totalAmount'] as double? ?? 0.0;
+    final totalAmountRaw = orderData['totalAmount'];
+    final totalAmount = totalAmountRaw is String
+        ? double.tryParse(totalAmountRaw) ?? 0.0
+        : totalAmountRaw is int
+            ? totalAmountRaw.toDouble()
+            : (totalAmountRaw as double? ?? 0.0);
 
     final shareText = '''
 📋 Orden de Servicio #$orderNumber

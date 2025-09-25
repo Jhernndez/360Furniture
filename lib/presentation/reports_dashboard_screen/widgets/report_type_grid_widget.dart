@@ -243,63 +243,9 @@ class _ReportTypeGridWidgetState extends State<ReportTypeGridWidget> {
   }
 
   List<ReportTypeModel> _getAvailableReportTypes() {
-    final baseReports = [
-      ReportTypeModel(
-        name: 'Performance Summary',
-        description: 'Individual technician performance metrics and KPIs',
-        icon: Icons.trending_up,
-        color: AppTheme.successLight,
-        previewMetrics: '96% completion',
-        isNew: false,
-      ),
-      ReportTypeModel(
-        name: 'Financial Overview',
-        description: 'Earnings, payments, and financial breakdown',
-        icon: Icons.attach_money,
-        color: AppTheme.primaryLight,
-        previewMetrics: '\$3,420 earned',
-        isNew: false,
-      ),
-      ReportTypeModel(
-        name: 'Service Analysis',
-        description: 'Service types, duration, and efficiency metrics',
-        icon: Icons.build,
-        color: Colors.purple,
-        previewMetrics: '4.8★ avg rating',
-        isNew: false,
-      ),
-      ReportTypeModel(
-        name: 'Customer Insights',
-        description: 'Customer satisfaction and feedback analysis',
-        icon: Icons.people,
-        color: Colors.teal,
-        previewMetrics: '92% satisfaction',
-        isNew: true,
-      ),
+    final baseReports = <ReportTypeModel>[
+      // Agrega aquí solo los reportes que sí deseas mostrar
     ];
-
-    // Admin-only reports
-    if (widget.isAdmin) {
-      baseReports.addAll([
-        ReportTypeModel(
-          name: 'System Analytics',
-          description: 'Overall system performance and usage statistics',
-          icon: Icons.dashboard,
-          color: Colors.indigo,
-          previewMetrics: '156 total orders',
-          isNew: false,
-        ),
-        ReportTypeModel(
-          name: 'Revenue Analysis',
-          description: 'Company-wide revenue trends and projections',
-          icon: Icons.show_chart,
-          color: Colors.green,
-          previewMetrics: '\$28,500 total',
-          isNew: false,
-        ),
-      ]);
-    }
-
     return baseReports;
   }
 }

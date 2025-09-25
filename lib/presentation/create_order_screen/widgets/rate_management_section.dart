@@ -81,8 +81,6 @@ class _RateManagementSectionState extends State<RateManagementSection> {
 
   @override
   Widget build(BuildContext context) {
-    final preloadedRate = _preloadedRates[widget.selectedServiceType] ?? 0.0;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -168,7 +166,7 @@ class _RateManagementSectionState extends State<RateManagementSection> {
                     ),
                   ),
                   Text(
-                    'EUR/hour',
+                    'USD/hour',
                     style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
                       color: AppTheme.lightTheme.colorScheme.onSurface
                           .withValues(alpha: 0.7),

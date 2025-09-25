@@ -39,8 +39,8 @@ class CustomerService {
   Future<Map<String, dynamic>> createCustomer({
     required String name,
     String? email,
-    required String phone,
-    required String address,
+    String? phone,
+    String? address,
   }) async {
     try {
       final user = client.auth.currentUser;

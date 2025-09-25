@@ -9,11 +9,11 @@ class GreetingHeader extends StatelessWidget {
   final VoidCallback? onProfileTap;
 
   const GreetingHeader({
-    Key? key,
+    super.key,
     required this.technicianName,
     required this.currentDate,
     this.onProfileTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -89,28 +89,7 @@ class GreetingHeader extends StatelessWidget {
           ),
           Row(
             children: [
-              GestureDetector(
-                onTap: onProfileTap,
-                child: Container(
-                  width: 12.w,
-                  height: 12.w,
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightTheme.colorScheme.primary
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppTheme.lightTheme.colorScheme.primary
-                          .withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: CustomIconWidget(
-                    iconName: 'person',
-                    color: AppTheme.lightTheme.colorScheme.primary,
-                    size: 24,
-                  ),
-                ),
-              ),
+              // Avatar eliminado
               SizedBox(width: 2.w),
               IconButton(
                 icon: Icon(Icons.logout, color: AppTheme.errorLight, size: 24),

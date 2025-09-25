@@ -22,19 +22,16 @@ class _FilterReportsWidgetState extends State<FilterReportsWidget> {
 
   final List<String> _reportTypes = [
     'All Types',
-    'Performance Summary',
-    'Financial Overview',
-    'Service Analysis',
-    'Customer Insights',
-    'System Analytics',
-    'Revenue Analysis',
+    'Summary Orders',
+    'Summary Payments',
   ];
 
   final List<String> _statusOptions = [
     'All Status',
-    'Completed',
-    'Generating',
-    'Failed',
+    'Complete',
+    'Partial',
+    'Report',
+    'Cancelled',
   ];
 
   bool get _hasActiveFilters {
@@ -254,15 +251,17 @@ class _FilterReportsWidgetState extends State<FilterReportsWidget> {
 
                   if (!isAll) {
                     switch (status) {
-                      case 'Completed':
+                      case 'Complete':
                         statusColor = AppTheme.successLight;
                         break;
-                      case 'Generating':
+                      case 'Partial':
                         statusColor = AppTheme.warningLight;
                         break;
-                      case 'Failed':
+                      case 'Report':
                         statusColor = AppTheme.errorLight;
                         break;
+                      case 'Cancelled':
+                        statusColor = AppTheme.secondaryLight;
                     }
                   }
 
@@ -418,7 +417,8 @@ class _FilterReportsWidgetState extends State<FilterReportsWidget> {
   void _notifyFilterChange() {
     final filters = <String, dynamic>{
       if (_dateRange != null) 'dateRange': _dateRange,
-      if (_selectedReportType != 'All Types') 'reportType': _selectedReportType,
+      if (_selectedReportType != 'All Types')
+        'reportType': _selectedReportType.toLowerCase(),
       if (_selectedStatus != 'All Status') 'status': _selectedStatus,
     };
 

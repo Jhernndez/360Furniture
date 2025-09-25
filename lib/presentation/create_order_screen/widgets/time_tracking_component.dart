@@ -13,12 +13,12 @@ class TimeTrackingComponent extends StatefulWidget {
   final VoidCallback onStartStop;
 
   const TimeTrackingComponent({
-    Key? key,
+    super.key,
     required this.currentDuration,
     required this.isRunning,
     required this.onDurationChanged,
     required this.onStartStop,
-  }) : super(key: key);
+  });
 
   @override
   State<TimeTrackingComponent> createState() => _TimeTrackingComponentState();
@@ -28,7 +28,7 @@ class _TimeTrackingComponentState extends State<TimeTrackingComponent> {
   Timer? _timer;
   late TextEditingController _hoursController;
   late TextEditingController _minutesController;
-  bool _isManualAdjustment = false;
+  bool _isManualAdjustment = true;
 
   @override
   void initState() {
@@ -89,15 +89,6 @@ class _TimeTrackingComponentState extends State<TimeTrackingComponent> {
     }
   }
 
-  void _toggleManualAdjustment() {
-    setState(() {
-      _isManualAdjustment = !_isManualAdjustment;
-      if (!_isManualAdjustment) {
-        _updateControllers();
-      }
-    });
-  }
-
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
@@ -128,22 +119,20 @@ class _TimeTrackingComponentState extends State<TimeTrackingComponent> {
               ),
             ),
             TextButton.icon(
-              onPressed: widget.isRunning ? null : _toggleManualAdjustment,
+              onPressed: () {
+                setState(() {
+                  _isManualAdjustment = !_isManualAdjustment;
+                });
+              },
               icon: CustomIconWidget(
                 iconName: _isManualAdjustment ? 'timer' : 'edit',
-                color: widget.isRunning
-                    ? AppTheme.lightTheme.colorScheme.onSurface
-                        .withValues(alpha: 0.4)
-                    : AppTheme.lightTheme.primaryColor,
+                color: AppTheme.lightTheme.primaryColor,
                 size: 4.w,
               ),
               label: Text(
                 _isManualAdjustment ? 'Timer' : 'Manual',
                 style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                  color: widget.isRunning
-                      ? AppTheme.lightTheme.colorScheme.onSurface
-                          .withValues(alpha: 0.4)
-                      : AppTheme.lightTheme.primaryColor,
+                  color: AppTheme.lightTheme.primaryColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -154,34 +143,15 @@ class _TimeTrackingComponentState extends State<TimeTrackingComponent> {
         Container(
           padding: EdgeInsets.all(4.w),
           decoration: BoxDecoration(
-            color: widget.isRunning
-                ? AppTheme.lightTheme.primaryColor.withValues(alpha: 0.05)
-                : AppTheme.lightTheme.colorScheme.surface,
+            color: AppTheme.lightTheme.colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isRunning
-                  ? AppTheme.lightTheme.primaryColor
-                  : AppTheme.lightTheme.colorScheme.outline,
-              width: widget.isRunning ? 2 : 1,
+              color: AppTheme.lightTheme.colorScheme.outline,
+              width: 1,
             ),
           ),
-          child: Column(
-            children: [
-              // Timer Display
-              if (!_isManualAdjustment) ...[
-                Text(
-                  _formatDuration(widget.currentDuration),
-                  style: AppTheme.lightTheme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: widget.isRunning
-                        ? AppTheme.lightTheme.primaryColor
-                        : AppTheme.lightTheme.colorScheme.onSurface,
-                    fontFeatures: [const FontFeature.tabularFigures()],
-                  ),
-                ),
-              ] else ...[
-                // Manual Time Input
-                Row(
+          child: _isManualAdjustment
+              ? Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -245,52 +215,48 @@ class _TimeTrackingComponentState extends State<TimeTrackingComponent> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 2.w),
+                  ],
+                )
+              : Column(
+                  children: [
                     Text(
-                      'h:m',
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurface
-                            .withValues(alpha: 0.7),
+                      _formatDuration(widget.currentDuration),
+                      style:
+                          AppTheme.lightTheme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: widget.isRunning
+                            ? AppTheme.lightTheme.primaryColor
+                            : AppTheme.lightTheme.colorScheme.onSurface,
+                        fontFeatures: [const FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: widget.onStartStop,
+                        icon: CustomIconWidget(
+                          iconName: widget.isRunning ? 'pause' : 'play_arrow',
+                          color: AppTheme.lightTheme.colorScheme.onPrimary,
+                          size: 5.w,
+                        ),
+                        label: Text(
+                          widget.isRunning ? 'Pause Timer' : 'Start Timer',
+                          style: AppTheme.lightTheme.textTheme.labelLarge
+                              ?.copyWith(
+                            color: AppTheme.lightTheme.colorScheme.onPrimary,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.isRunning
+                              ? AppTheme.warningLight
+                              : AppTheme.lightTheme.primaryColor,
+                          padding: EdgeInsets.symmetric(vertical: 3.h),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ],
-              SizedBox(height: 3.h),
-              // Start/Stop Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isManualAdjustment ? null : widget.onStartStop,
-                  icon: CustomIconWidget(
-                    iconName: widget.isRunning ? 'pause' : 'play_arrow',
-                    color: _isManualAdjustment
-                        ? AppTheme.lightTheme.colorScheme.onSurface
-                            .withValues(alpha: 0.4)
-                        : AppTheme.lightTheme.colorScheme.onPrimary,
-                    size: 5.w,
-                  ),
-                  label: Text(
-                    widget.isRunning ? 'Pause Timer' : 'Start Timer',
-                    style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                      color: _isManualAdjustment
-                          ? AppTheme.lightTheme.colorScheme.onSurface
-                              .withValues(alpha: 0.4)
-                          : AppTheme.lightTheme.colorScheme.onPrimary,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isManualAdjustment
-                        ? AppTheme.lightTheme.colorScheme.surface
-                        : (widget.isRunning
-                            ? AppTheme.warningLight
-                            : AppTheme.lightTheme.primaryColor),
-                    padding: EdgeInsets.symmetric(vertical: 3.h),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );
