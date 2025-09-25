@@ -1,5 +1,4 @@
 import 'dart:convert';
-// Import condicional de File solo fuera de web
 // ignore: uri_does_not_exist
 import 'dart:io' if (dart.library.io) 'dart:io';
 
