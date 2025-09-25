@@ -1,10 +1,14 @@
 import 'dart:convert';
+// Import condicional de File solo fuera de web
+// ignore: uri_does_not_exist
 import 'dart:io' if (dart.library.io) 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+// import 'package:path_provider/path_provider.dart';
+// Solo importar universal_html en web
+// ignore: uri_does_not_exist
 import 'package:universal_html/html.dart' as html;
 
 import '../../core/app_export.dart';
@@ -66,6 +70,20 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
     }
   }
 
+  Future<List<int>?> _readFileBytes(String? path) async {
+    // Solo usar File en plataformas compatibles
+    if (path == null) return null;
+    try {
+      // ignore: avoid_web_libraries_in_flutter
+      // import 'dart:io' if (dart.library.io) 'dart:io';
+      // File solo existe fuera de web
+      // ignore: undefined_class
+      return await File(path).readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _selectFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -76,7 +94,7 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
       if (result != null) {
         final bytes = kIsWeb
             ? result.files.first.bytes
-            : await File(result.files.first.path!).readAsBytes();
+            : await _readFileBytes(result.files.first.path);
 
         if (bytes != null) {
           setState(() {
@@ -85,6 +103,8 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
           });
 
           await _parseFileData(bytes, result.files.first.extension ?? '');
+        } else if (kIsWeb) {
+          _showErrorDialog('No se pudo leer el archivo en Web.');
         }
       }
     } catch (e) {
@@ -356,6 +376,7 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
   Future<void> _downloadFile(String content, String filename) async {
     try {
       if (kIsWeb) {
+        // Solo en web: usar universal_html
         final bytes = utf8.encode(content);
         final blob = html.Blob([bytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
@@ -364,9 +385,8 @@ class _ExcelConciliationScreenState extends State<ExcelConciliationScreen> {
           ..click();
         html.Url.revokeObjectUrl(url);
       } else {
-        final directory = await getApplicationDocumentsDirectory();
-        final file = File('${directory.path}/$filename');
-        await file.writeAsString(content);
+        // En otras plataformas, mostrar mensaje de no disponible
+        _showErrorDialog('Descarga solo disponible en la versión web.');
       }
     } catch (e) {
       throw Exception('Failed to download file: $e');

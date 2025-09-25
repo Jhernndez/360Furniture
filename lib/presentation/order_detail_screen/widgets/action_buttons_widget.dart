@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+// Solo importar share_plus si no es web
+// ignore: uri_does_not_exist
+import 'package:share_plus/share_plus.dart'
+    if (dart.library.html) 'share_plus_web_stub.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -18,7 +22,14 @@ class ActionButtonsWidget extends StatelessWidget {
     required this.onGenerateReport,
   });
 
-  Future<void> _shareOrder() async {
+  Future<void> _shareOrder(BuildContext context) async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Compartir no está disponible en Web/Wasm.')),
+      );
+      return;
+    }
     final orderNumber = orderData['orderNumber'] as String? ?? '';
     final customerName = orderData['customerName'] as String? ?? '';
     final serviceType = orderData['serviceType'] as String? ?? '';
@@ -103,7 +114,7 @@ Generado por ServiceTracker Pro
                   'Compartir Orden',
                   'share',
                   AppTheme.warningLight,
-                  _shareOrder,
+                  () => _shareOrder(context),
                 ),
               ),
               SizedBox(

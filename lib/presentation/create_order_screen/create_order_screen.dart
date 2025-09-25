@@ -6,7 +6,6 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/supabase_service.dart';
 import '../../services/customer_service.dart';
-import './widgets/customer_information_form.dart';
 import './widgets/observations_field.dart';
 import './widgets/rate_management_section.dart';
 import './widgets/service_type_selector.dart';
@@ -166,13 +165,6 @@ class _CreateOrderScreenState extends State<CreateOrderScreen> {
   void _onStartStopTimer() {
     setState(() {
       _isTimerRunning = !_isTimerRunning;
-    });
-    _markAsChanged();
-  }
-
-  void _onCustomerDataChanged(Map<String, String> customerData) {
-    setState(() {
-      _customerData = customerData;
     });
     _markAsChanged();
   }

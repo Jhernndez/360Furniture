@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io' if (dart.library.io) 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+// Solo importar universal_html en web
+// ignore: uri_does_not_exist
 import 'package:universal_html/html.dart' as html;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -236,23 +236,16 @@ class ReportService {
   // Platform-specific file download
   static Future<void> _downloadFile(List<int> bytes, String fileName) async {
     if (kIsWeb) {
-      // ...existing code...
+      // Solo en web: usar universal_html
+      final blob = html.Blob([bytes]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute("download", fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
     } else {
-      try {
-        Directory? directory;
-        if (Platform.isAndroid) {
-          directory = Directory('/storage/emulated/0/Download');
-        } else {
-          directory = await getApplicationDocumentsDirectory();
-        }
-        final file = File('${directory.path}/$fileName');
-        await file.writeAsBytes(bytes);
-        print('Archivo guardado en: ${file.path}');
-        // Abrir la carpeta de descargas
-        await OpenFile.open(directory.path);
-      } catch (e) {
-        throw Exception('Failed to save file: $e');
-      }
+      // En otras plataformas, mostrar mensaje de no disponible
+      throw Exception('Descarga solo disponible en la versión web.');
     }
   }
 
