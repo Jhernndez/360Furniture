@@ -6,11 +6,11 @@ class SupabaseService {
 
   SupabaseService._();
 
-  // ✅ Credenciales estáticas para pruebas
+  // ✅ Leer credenciales desde variables de entorno (dart-define)
   static const String supabaseUrl =
-      'https://zsebtdmjdvzadsxmftxm.supabase.co'; // Reemplaza con tu URL real
+      String.fromEnvironment('SUPABASE_URL', defaultValue: '');
   static const String supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZWJ0ZG1qZHZ6YWRzeG1mdHhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyNDM4NTYsImV4cCI6MjA3MzgxOTg1Nn0.6UU1QL5VN_rsGXAy3V8tfojO48lhXbqaTiL6dwVelNU'; // Reemplaza con tu anon key real
+      String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
   // Inicializar Supabase - se llama desde main()
   static Future<void> initialize() async {

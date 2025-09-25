@@ -60,42 +60,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late Map<String, dynamic> _orderData;
   final ScrollController _scrollController = ScrollController();
 
-  // Datos de ejemplo para pruebas locales (puedes eliminar si no se usa)
-  final Map<String, dynamic> _mockOrderData = {
-    "orderNumber": "ORD-2024-001",
-    "createdDate": "18/09/2024",
-    "status": "in_progress",
-    "serviceType": "leather",
-    "rate": 25.50,
-    "timeSpent": 3.5,
-    "totalAmount": 89.25,
-    "customerName": "María González",
-    "customerPhone": "+34 612 345 678",
-    "customerAddress": "Calle Mayor 123, 28001 Madrid, España",
-    "observations":
-        "El sofá de cuero presenta desgaste en los brazos y necesita tratamiento especial para restaurar el color original. Se requiere limpieza profunda y aplicación de acondicionador. El cliente solicita que se tenga especial cuidado con las costuras laterales que están algo sueltas.",
-    "startTime": "09:30",
-    "endTime": "13:00",
-    "photos": [
-      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400",
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
-    ],
-    "technicianId": "TECH-001",
-    "technicianName": "Carlos Rodríguez",
-    "lastModified": "2024-09-18T21:35:49.912118",
-    "modificationHistory": [
-      {
-        "timestamp": "2024-09-18T09:30:00",
-        "action": "Orden creada",
-        "user": "Carlos Rodríguez"
-      },
-      {
-        "timestamp": "2024-09-18T10:15:00",
-        "action": "Estado cambiado a En Progreso",
-        "user": "Carlos Rodríguez"
-      }
-    ]
-  };
+  bool _orderNotFound = false;
 
   @override
   void initState() {
@@ -198,12 +163,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           });
         } else {
           setState(() {
-            _orderData = Map.from(_mockOrderData);
+            _orderNotFound = true;
           });
         }
       } else {
         setState(() {
-          _orderData = Map.from(_mockOrderData);
+          _orderNotFound = true;
         });
       }
     });
@@ -403,6 +368,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_orderNotFound) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Detalle de Orden'),
+        ),
+        body: Center(
+          child: Text(
+            'Orden no encontrada o no disponible.',
+            style: TextStyle(fontSize: 18, color: Colors.red),
+          ),
+        ),
+      );
+    }
+    // ...existing code for the real order detail UI...
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(

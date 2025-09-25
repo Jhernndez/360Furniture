@@ -227,7 +227,7 @@ FOR SELECT
 TO authenticated
 USING (public.is_admin());
 
--- 9. Mock Data with Complete Auth Users
+-- 9.  Data with Complete Auth Users
 DO $$
 DECLARE
     admin_uuid UUID := gen_random_uuid();
