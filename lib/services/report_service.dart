@@ -243,9 +243,15 @@ class ReportService {
         ..setAttribute("download", fileName)
         ..click();
       html.Url.revokeObjectUrl(url);
+    } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      // En desktop: guardar en Downloads
+      final downloadsPath = await _getDownloadsPath();
+      final file = File('$downloadsPath/$fileName');
+      await file.writeAsBytes(bytes);
+      print('Archivo guardado en: ${file.path}');
     } else {
-      // En otras plataformas, mostrar mensaje de no disponible
-      throw Exception('Descarga solo disponible en la versión web.');
+      // En otras plataformas (móviles), mostrar mensaje de no disponible
+      throw Exception('Descarga no disponible en esta plataforma.');
     }
   }
 
@@ -374,5 +380,32 @@ class ReportService {
     }
 
     return buffer.toString();
+  }
+
+  // Get Downloads directory path
+  static Future<String> _getDownloadsPath() async {
+    if (Platform.isWindows) {
+      // Windows: usar la carpeta Downloads del usuario
+      final userProfile = Platform.environment['USERPROFILE'];
+      if (userProfile != null) {
+        return '$userProfile/Downloads';
+      }
+      return 'C:/Users/Downloads'; // fallback
+    } else if (Platform.isMacOS) {
+      // macOS: usar la carpeta Downloads del usuario
+      final home = Platform.environment['HOME'];
+      if (home != null) {
+        return '$home/Downloads';
+      }
+      return '/Users/Downloads'; // fallback
+    } else if (Platform.isLinux) {
+      // Linux: usar la carpeta Downloads del usuario
+      final home = Platform.environment['HOME'];
+      if (home != null) {
+        return '$home/Downloads';
+      }
+      return '/home/Downloads'; // fallback
+    }
+    return './Downloads'; // fallback general
   }
 }
