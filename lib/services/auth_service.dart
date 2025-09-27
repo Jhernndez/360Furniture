@@ -190,4 +190,41 @@ class AuthService {
   Future<bool> isTechnician() async {
     return await hasRole('technician');
   }
+
+  // Test login function - TEMPORAL PARA DEBUG
+  Future<void> testLogin() async {
+    try {
+      print('🔧 Probando login con credenciales de prueba...');
+      
+      // Intentar con credenciales de prueba comunes
+      final testCredentials = [
+        {'email': 'admin@test.com', 'password': 'admin123'},
+        {'email': 'test@test.com', 'password': 'test123'},
+        {'email': 'user@example.com', 'password': 'password'},
+      ];
+      
+      for (final cred in testCredentials) {
+        try {
+          print('🔧 Intentando con ${cred['email']}...');
+          final response = await client.auth.signInWithPassword(
+            email: cred['email']!,
+            password: cred['password']!,
+          );
+          
+          if (response.user != null) {
+            print('✅ Login exitoso con ${cred['email']}');
+            print('👤 Usuario: ${response.user!.email}');
+            return;
+          }
+        } catch (e) {
+          print('❌ Fallo login con ${cred['email']}: $e');
+        }
+      }
+      
+      print('❌ Ninguna credencial de prueba funcionó');
+      
+    } catch (e) {
+      print('❌ Error en test de login: $e');
+    }
+  }
 }

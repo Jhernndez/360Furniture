@@ -5,6 +5,7 @@ import 'package:sizer/sizer.dart';
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
 import './services/supabase_service.dart';
+import './services/auth_service.dart';
 
 import 'package:flutter/foundation.dart';
 
@@ -17,6 +18,8 @@ void main() async {
     // Solo para web: prueba la conexión a Supabase
     if (kIsWeb) {
       await SupabaseService.instance.testConnection();
+      // Test login credentials
+      await AuthService.instance.testLogin();
     }
   } catch (e) {
     debugPrint('Failed to initialize Supabase: $e');

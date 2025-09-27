@@ -44,11 +44,23 @@ class SupabaseService {
   Future<void> testConnection() async {
     try {
       print('🔧 Probando conexión a Supabase...');
-      // Cambiar a una tabla que sabemos que existe
-      final data = await client.from('user_profiles').select().limit(1);
-      print('✅ Conexión a Supabase exitosa. Resultado: $data');
+
+      // Test 1: Probar autenticación básica
+      print('🔧 Probando autenticación...');
+      final authUser = client.auth.currentUser;
+      print('👤 Usuario actual: ${authUser?.email ?? "No autenticado"}');
+
+      // Test 2: Intentar consulta pública (sin RLS)
+      try {
+        print('🔧 Probando consulta a service_requests...');
+        final data =
+            await client.from('service_requests').select('id').limit(1);
+        print('✅ Consulta exitosa. Registros: ${data.length}');
+      } catch (e) {
+        print('❌ Error en service_requests: $e');
+      }
     } catch (e) {
-      print('❌ Error al conectar con Supabase: $e');
+      print('❌ Error general en conexión: $e');
     }
   }
 }
